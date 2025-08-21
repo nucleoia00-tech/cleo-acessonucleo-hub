@@ -316,7 +316,7 @@ export default function PainelAdmin() {
                                   Aprovar
                                 </Button>
                               )}
-                              {member.status === 'ativo' && (
+                               {member.status === 'ativo' && (
                                 <Button
                                   size="sm"
                                   variant="secondary"
@@ -325,6 +325,17 @@ export default function PainelAdmin() {
                                 >
                                   <UserMinus className="w-3 h-3 mr-1" />
                                   Suspender
+                                </Button>
+                              )}
+                              {member.status === 'suspenso' && (
+                                <Button
+                                  size="sm"
+                                  variant="default"
+                                  onClick={() => handleUpdateMemberStatus(member, 'ativo')}
+                                  disabled={updateMemberMutation.isPending}
+                                >
+                                  <Check className="w-3 h-3 mr-1" />
+                                  Reativar
                                 </Button>
                               )}
                               {member.status !== 'rejeitado' && (
