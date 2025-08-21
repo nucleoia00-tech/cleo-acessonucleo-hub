@@ -4,16 +4,22 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Logo } from '@/components/Logo';
 import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 import { Eye, EyeOff } from 'lucide-react';
 
 export default function Login() {
   const { user, signIn, loading } = useAuth();
+  const { toast } = useToast();
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [pendingConfirm, setPendingConfirm] = useState(false);
+  const [resending, setResending] = useState(false);
 
   // Redirect if already authenticated
   if (user && !loading) {
@@ -25,8 +31,48 @@ export default function Login() {
     if (!email || !senha) return;
 
     setIsSubmitting(true);
-    await signIn(email, senha);
+    const { error } = await signIn(email, senha);
     setIsSubmitting(false);
+
+    if (error && typeof error.message === 'string' && error.message.toLowerCase().includes('email not confirmed')) {
+      setPendingConfirm(true);
+      toast({
+        title: 'E-mail não confirmado',
+        description: 'Confirme seu e-mail para continuar. Você pode reenviar abaixo.',
+      });
+    }
+  };
+
+  const handleResend = async () => {
+    if (!email) {
+      toast({
+        title: 'Informe seu e-mail',
+        description: 'Preencha o e-mail para reenviar a confirmação.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    setResending(true);
+    const redirectUrl = `${window.location.origin}/`;
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email,
+      options: { emailRedirectTo: redirectUrl },
+    });
+    setResending(false);
+
+    if (error) {
+      toast({
+        title: 'Falha ao reenviar',
+        description: error.message,
+        variant: 'destructive',
+      });
+    } else {
+      toast({
+        title: 'Confirmação enviada',
+        description: 'Verifique sua caixa de entrada e a pasta de spam.',
+      });
+    }
   };
 
   if (loading) {
@@ -62,6 +108,23 @@ export default function Login() {
             </CardDescription>
           </CardHeader>
           <CardContent>
+            {pendingConfirm && (
+              <Alert className="mb-4">
+                <AlertTitle>E-mail não confirmado</AlertTitle>
+                <AlertDescription>
+                  Confirme seu e-mail para entrar. Não recebeu?
+                  <Button
+                    type="button"
+                    variant="link"
+                    onClick={handleResend}
+                    disabled={resending}
+                    className="px-2"
+                  >
+                    {resending ? 'Reenviando...' : 'Reenviar confirmação'}
+                  </Button>
+                </AlertDescription>
+              </Alert>
+            )}
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="email">E-mail</Label>
