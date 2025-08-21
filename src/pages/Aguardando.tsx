@@ -1,3 +1,4 @@
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/Logo';
@@ -7,13 +8,23 @@ import { Clock, Mail } from 'lucide-react';
 export default function Aguardando() {
   const { signOut } = useAuth();
 
+  const handleSignOut = async () => {
+    console.log('Botão sair clicado - iniciando logout');
+    try {
+      await signOut();
+      console.log('Logout realizado com sucesso');
+    } catch (error) {
+      console.error('Erro durante logout:', error);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
       <header className="border-b border-border">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <Logo />
-          <Button variant="outline" onClick={signOut}>
+          <Button variant="outline" onClick={handleSignOut}>
             Sair
           </Button>
         </div>
@@ -49,7 +60,7 @@ export default function Aguardando() {
               </ul>
             </div>
 
-            <Button variant="outline" onClick={signOut} className="w-full">
+            <Button variant="outline" onClick={handleSignOut} className="w-full">
               Fazer Logout
             </Button>
           </CardContent>

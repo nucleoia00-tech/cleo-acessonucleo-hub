@@ -1,3 +1,4 @@
+
 import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -24,6 +25,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        console.log('Auth state changed:', event, session?.user?.email);
         setSession(session);
         setUser(session?.user ?? null);
         
@@ -43,6 +45,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 });
               });
           }, 0);
+        }
+
+        if (event === 'SIGNED_OUT') {
+          console.log('Usuário deslogado com sucesso');
         }
         
         setLoading(false);
@@ -111,7 +117,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    console.log('Iniciando processo de logout...');
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error('Erro no logout:', error);
+        toast({
+          title: "Erro ao sair",
+          description: error.message,
+          variant: "destructive"
+        });
+      } else {
+        console.log('Logout realizado com sucesso');
+        toast({
+          title: "Logout realizado",
+          description: "Você foi desconectado com sucesso.",
+        });
+      }
+    } catch (error) {
+      console.error('Erro inesperado no logout:', error);
+    }
   };
 
   return (
