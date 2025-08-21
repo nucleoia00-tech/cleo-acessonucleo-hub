@@ -14,16 +14,111 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      assinantes: {
+        Row: {
+          criado_em: string
+          email: string
+          id: string
+          nome: string
+          observacao_admin: string | null
+          plano: string | null
+          role: Database["public"]["Enums"]["app_role"]
+          status: Database["public"]["Enums"]["status_assinante"]
+          ultimo_login: string | null
+          user_id: string | null
+        }
+        Insert: {
+          criado_em?: string
+          email: string
+          id?: string
+          nome: string
+          observacao_admin?: string | null
+          plano?: string | null
+          role?: Database["public"]["Enums"]["app_role"]
+          status?: Database["public"]["Enums"]["status_assinante"]
+          ultimo_login?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          criado_em?: string
+          email?: string
+          id?: string
+          nome?: string
+          observacao_admin?: string | null
+          plano?: string | null
+          role?: Database["public"]["Enums"]["app_role"]
+          status?: Database["public"]["Enums"]["status_assinante"]
+          ultimo_login?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      credenciais_adspower: {
+        Row: {
+          email_login: string
+          id: string
+          senha_atual: string
+          ultima_atualizacao: string
+        }
+        Insert: {
+          email_login?: string
+          id?: string
+          senha_atual?: string
+          ultima_atualizacao?: string
+        }
+        Update: {
+          email_login?: string
+          id?: string
+          senha_atual?: string
+          ultima_atualizacao?: string
+        }
+        Relationships: []
+      }
+      logs: {
+        Row: {
+          acao: string
+          id: string
+          timestamp: string
+          usuario_email: string
+        }
+        Insert: {
+          acao: string
+          id?: string
+          timestamp?: string
+          usuario_email: string
+        }
+        Update: {
+          acao?: string
+          id?: string
+          timestamp?: string
+          usuario_email?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      is_admin_by_email: {
+        Args: { _email: string }
+        Returns: boolean
+      }
+      registrar_log: {
+        Args: { _acao: string; _usuario_email: string }
+        Returns: undefined
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "assinante"
+      status_assinante: "pendente" | "ativo" | "suspenso" | "rejeitado"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +245,9 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "assinante"],
+      status_assinante: ["pendente", "ativo", "suspenso", "rejeitado"],
+    },
   },
 } as const
