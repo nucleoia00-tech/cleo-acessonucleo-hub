@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -6,12 +5,11 @@ import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Logo } from '@/components/Logo';
-import { Eye, EyeOff, Copy, ExternalLink } from 'lucide-react';
+import { Copy, ExternalLink } from 'lucide-react';
 
 export default function AcessoAdspower() {
   const { signOut } = useAuth();
   const { toast } = useToast();
-  const [showPassword, setShowPassword] = useState(false);
 
   // Fetch credenciais AdsPower
   const { data: credenciais, isLoading, error } = useQuery({
@@ -151,42 +149,19 @@ export default function AcessoAdspower() {
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <label className="text-sm font-medium">Senha:</label>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="text-muted-foreground hover:text-foreground"
-                    >
-                      {showPassword ? (
-                        <>
-                          <EyeOff className="w-4 h-4 mr-1" />
-                          Ocultar
-                        </>
-                      ) : (
-                        <>
-                          <Eye className="w-4 h-4 mr-1" />
-                          Mostrar
-                        </>
-                      )}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleCopyPassword}
-                      className="text-primary hover:text-primary/80"
-                    >
-                      <Copy className="w-4 h-4 mr-1" />
-                      Copiar
-                    </Button>
-                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleCopyPassword}
+                    className="text-primary hover:text-primary/80"
+                  >
+                    <Copy className="w-4 h-4 mr-1" />
+                    Copiar
+                  </Button>
                 </div>
                 <div className="bg-muted/50 rounded-lg p-4 border border-border">
                   <code className="text-sm font-mono text-foreground">
-                    {showPassword 
-                      ? (credenciais?.senha_atual || 'Carregando...') 
-                      : '•'.repeat(credenciais?.senha_atual?.length || 8)
-                    }
+                    {credenciais?.senha_atual || 'Carregando...'}
                   </code>
                 </div>
               </div>
