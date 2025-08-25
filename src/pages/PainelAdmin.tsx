@@ -27,6 +27,7 @@ export default function PainelAdmin() {
   // Modal state for member management
   const [selectedMember, setSelectedMember] = useState<any>(null);
   const [observacao, setObservacao] = useState('');
+  const [emailQuery, setEmailQuery] = useState('');
 
   // Fetch credenciais AdsPower
   const { data: credenciais, refetch: refetchCredenciais } = useQuery({
@@ -276,6 +277,16 @@ export default function PainelAdmin() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
+                <div className="mb-4 flex items-center gap-3">
+                  <Label htmlFor="busca-email" className="whitespace-nowrap">Buscar por e-mail</Label>
+                  <Input
+                    id="busca-email"
+                    value={emailQuery}
+                    onChange={(e) => setEmailQuery(e.target.value)}
+                    placeholder="ex: usuario@dominio.com"
+                    className="max-w-md bg-background border-border"
+                  />
+                </div>
                 <div className="rounded-md border border-border">
                   <Table>
                     <TableHeader>
@@ -289,7 +300,11 @@ export default function PainelAdmin() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {assinantes?.map((member) => (
+                      {assinantes
+                        ?.filter((member) =>
+                          (member.email || '').toLowerCase().includes(emailQuery.trim().toLowerCase())
+                        )
+                        .map((member) => (
                         <TableRow key={member.id}>
                           <TableCell className="font-medium">{member.nome}</TableCell>
                           <TableCell>{member.email}</TableCell>
