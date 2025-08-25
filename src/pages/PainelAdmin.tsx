@@ -190,6 +190,23 @@ export default function PainelAdmin() {
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">Painel do Administrador</h1>
           <p className="text-muted-foreground">Gerencie credenciais e assinantes do Núcleo IA</p>
+          
+          {/* Active Members Counter */}
+          <div className="mt-4">
+            <Card className="bg-card border-border inline-block">
+              <CardContent className="px-4 py-3">
+                <div className="flex items-center gap-3">
+                  <Users className="w-5 h-5 text-primary" />
+                  <div>
+                    <p className="text-sm text-muted-foreground">Membros Ativos</p>
+                    <p className="text-2xl font-bold text-primary">
+                      {assinantes?.filter(member => member.status === 'ativo').length || 0}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </div>
 
         <Tabs defaultValue="credenciais" className="space-y-6">
