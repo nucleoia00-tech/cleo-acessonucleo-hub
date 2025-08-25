@@ -17,6 +17,7 @@ export type Database = {
       assinantes: {
         Row: {
           criado_em: string
+          data_expiracao: string | null
           email: string
           id: string
           nome: string
@@ -29,6 +30,7 @@ export type Database = {
         }
         Insert: {
           criado_em?: string
+          data_expiracao?: string | null
           email: string
           id?: string
           nome: string
@@ -41,6 +43,7 @@ export type Database = {
         }
         Update: {
           criado_em?: string
+          data_expiracao?: string | null
           email?: string
           id?: string
           nome?: string
@@ -109,6 +112,10 @@ export type Database = {
       }
       is_admin_by_email: {
         Args: { _email: string }
+        Returns: boolean
+      }
+      is_subscription_active: {
+        Args: { _user_id: string }
         Returns: boolean
       }
       registrar_log: {

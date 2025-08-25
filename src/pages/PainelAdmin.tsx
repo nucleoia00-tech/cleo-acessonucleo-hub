@@ -12,7 +12,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
 import { Logo } from '@/components/Logo';
-import { Settings, Users, Eye, EyeOff, Check, X, Clock, UserMinus } from 'lucide-react';
+import { Settings, Users, Eye, EyeOff, Check, X, Clock, UserMinus, Calendar, RotateCcw } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 export default function PainelAdmin() {
   const { signOut } = useAuth();
@@ -28,6 +29,8 @@ export default function PainelAdmin() {
   const [selectedMember, setSelectedMember] = useState<any>(null);
   const [observacao, setObservacao] = useState('');
   const [emailQuery, setEmailQuery] = useState('');
+  const [dataExpiracao, setDataExpiracao] = useState('');
+  const [showExpirationModal, setShowExpirationModal] = useState(false);
 
   // Fetch credenciais AdsPower
   const { data: credenciais, refetch: refetchCredenciais } = useQuery({
@@ -128,6 +131,35 @@ export default function PainelAdmin() {
     }
   });
 
+  // Mutation to update expiration date
+  const updateExpirationMutation = useMutation({
+    mutationFn: async ({ id, data_expiracao }: { id: string; data_expiracao: string | null }) => {
+      const { error } = await supabase
+        .from('assinantes')
+        .update({ data_expiracao })
+        .eq('id', id);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({
+        title: "Data de expiração atualizada",
+        description: "A data de expiração foi atualizada com sucesso.",
+      });
+      refetchAssinantes();
+      setShowExpirationModal(false);
+      setSelectedMember(null);
+      setDataExpiracao('');
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erro ao atualizar",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  });
+
   const handleSaveCredenciais = () => {
     updateCredenciaisMutation.mutate({
       email_login: emailLogin,
@@ -166,6 +198,60 @@ export default function PainelAdmin() {
       <Badge variant={config.variant} className="flex items-center gap-1">
         <Icon className="w-3 h-3" />
         {status.charAt(0).toUpperCase() + status.slice(1)}
+      </Badge>
+    );
+  };
+
+  const handleExpirationModal = (member: any) => {
+    setSelectedMember(member);
+    const currentExpiration = member.data_expiracao 
+      ? new Date(member.data_expiracao).toISOString().slice(0, 16)
+      : '';
+    setDataExpiracao(currentExpiration);
+    setShowExpirationModal(true);
+  };
+
+  const handleSaveExpiration = () => {
+    if (!selectedMember) return;
+    
+    updateExpirationMutation.mutate({
+      id: selectedMember.id,
+      data_expiracao: dataExpiracao || null
+    });
+  };
+
+  const handleExtendAccess = (member: any, months: number) => {
+    const currentDate = member.data_expiracao 
+      ? new Date(member.data_expiracao)
+      : new Date();
+    
+    const newDate = new Date(currentDate);
+    newDate.setMonth(newDate.getMonth() + months);
+    
+    updateExpirationMutation.mutate({
+      id: member.id,
+      data_expiracao: newDate.toISOString()
+    });
+  };
+
+  const isExpired = (dataExpiracao: string | null) => {
+    if (!dataExpiracao) return false;
+    return new Date(dataExpiracao) < new Date();
+  };
+
+  const getExpirationStatus = (dataExpiracao: string | null, status: string) => {
+    if (!dataExpiracao && status === 'ativo') {
+      return <Badge variant="secondary">Sem expiração</Badge>;
+    }
+    
+    if (!dataExpiracao) return null;
+    
+    const expired = isExpired(dataExpiracao);
+    const date = new Date(dataExpiracao).toLocaleDateString('pt-BR');
+    
+    return (
+      <Badge variant={expired ? "destructive" : "default"}>
+        {expired ? `Expirou em ${date}` : `Expira em ${date}`}
       </Badge>
     );
   };
@@ -311,6 +397,7 @@ export default function PainelAdmin() {
                         <TableHead>Nome</TableHead>
                         <TableHead>E-mail</TableHead>
                         <TableHead>Status</TableHead>
+                        <TableHead>Expiração</TableHead>
                         <TableHead>Último Login</TableHead>
                         <TableHead>Cadastrado em</TableHead>
                         <TableHead>Ações</TableHead>
@@ -326,6 +413,9 @@ export default function PainelAdmin() {
                           <TableCell className="font-medium">{member.nome}</TableCell>
                           <TableCell>{member.email}</TableCell>
                           <TableCell>{getStatusBadge(member.status)}</TableCell>
+                          <TableCell>
+                            {getExpirationStatus(member.data_expiracao, member.status)}
+                          </TableCell>
                           <TableCell className="text-sm text-muted-foreground">
                             {member.ultimo_login 
                               ? new Date(member.ultimo_login).toLocaleString('pt-BR')
@@ -336,7 +426,8 @@ export default function PainelAdmin() {
                             {new Date(member.criado_em).toLocaleDateString('pt-BR')}
                           </TableCell>
                           <TableCell>
-                            <div className="flex items-center gap-1">
+                            <div className="flex items-center gap-1 flex-wrap">
+                              {/* Status Management Buttons */}
                               {member.status === 'pendente' && (
                                 <Button
                                   size="sm"
@@ -381,6 +472,29 @@ export default function PainelAdmin() {
                                   Rejeitar
                                 </Button>
                               )}
+                              
+                              {/* Expiration Management Buttons */}
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleExpirationModal(member)}
+                                disabled={updateExpirationMutation.isPending}
+                              >
+                                <Calendar className="w-3 h-3 mr-1" />
+                                Data
+                              </Button>
+                              
+                              {member.status === 'ativo' && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleExtendAccess(member, 1)}
+                                  disabled={updateExpirationMutation.isPending}
+                                >
+                                  <RotateCcw className="w-3 h-3 mr-1" />
+                                  +1 mês
+                                </Button>
+                              )}
                             </div>
                           </TableCell>
                         </TableRow>
@@ -393,6 +507,95 @@ export default function PainelAdmin() {
           </TabsContent>
         </Tabs>
       </main>
+
+      {/* Expiration Date Modal */}
+      <Dialog open={showExpirationModal} onOpenChange={setShowExpirationModal}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Gerenciar Data de Expiração</DialogTitle>
+            <DialogDescription>
+              Defina ou altere a data de expiração do acesso para {selectedMember?.nome}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="data-expiracao">Data de Expiração</Label>
+              <Input
+                id="data-expiracao"
+                type="datetime-local"
+                value={dataExpiracao}
+                onChange={(e) => setDataExpiracao(e.target.value)}
+                className="bg-background border-border"
+              />
+              <p className="text-sm text-muted-foreground">
+                Deixe em branco para acesso sem data limite
+              </p>
+            </div>
+            
+            <div className="space-y-2">
+              <Label>Ações Rápidas</Label>
+              <div className="flex gap-2 flex-wrap">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    const date = new Date();
+                    date.setMonth(date.getMonth() + 1);
+                    setDataExpiracao(date.toISOString().slice(0, 16));
+                  }}
+                >
+                  +1 mês
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    const date = new Date();
+                    date.setMonth(date.getMonth() + 3);
+                    setDataExpiracao(date.toISOString().slice(0, 16));
+                  }}
+                >
+                  +3 meses
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    const date = new Date();
+                    date.setFullYear(date.getFullYear() + 1);
+                    setDataExpiracao(date.toISOString().slice(0, 16));
+                  }}
+                >
+                  +1 ano
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => setDataExpiracao('')}
+                >
+                  Remover limite
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowExpirationModal(false)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleSaveExpiration}
+              disabled={updateExpirationMutation.isPending}
+            >
+              {updateExpirationMutation.isPending ? 'Salvando...' : 'Salvar'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
