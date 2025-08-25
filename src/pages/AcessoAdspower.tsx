@@ -14,7 +14,7 @@ export default function AcessoAdspower() {
   const [showPassword, setShowPassword] = useState(false);
 
   // Fetch credenciais AdsPower
-  const { data: credenciais } = useQuery({
+  const { data: credenciais, isLoading, error } = useQuery({
     queryKey: ['credenciais-adspower'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -22,9 +22,14 @@ export default function AcessoAdspower() {
         .select('*')
         .single();
       
-      if (error) throw error;
+      if (error) {
+        console.error('Erro ao buscar credenciais AdsPower:', error);
+        throw error;
+      }
       return data;
     },
+    retry: 1,
+    refetchOnWindowFocus: false,
   });
 
   const handleCopyPassword = async () => {
@@ -101,8 +106,28 @@ export default function AcessoAdspower() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Email Login */}
-              <div className="space-y-3">
+              {/* Loading State */}
+              {isLoading && (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">Carregando credenciais...</p>
+                </div>
+              )}
+
+              {/* Error State */}
+              {error && (
+                <div className="text-center py-8">
+                  <p className="text-destructive mb-2">Erro ao carregar credenciais</p>
+                  <p className="text-sm text-muted-foreground">
+                    Verifique se você tem permissão para acessar esta área.
+                  </p>
+                </div>
+              )}
+
+              {/* Success State */}
+              {!isLoading && !error && credenciais && (
+                <>
+                  {/* Email Login */}
+                  <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <label className="text-sm font-medium">E-mail de login:</label>
                   <Button
@@ -188,6 +213,8 @@ export default function AcessoAdspower() {
                   <li>4. As credenciais são atualizadas automaticamente</li>
                 </ol>
               </div>
+              </>
+              )}
             </CardContent>
           </Card>
         </div>
