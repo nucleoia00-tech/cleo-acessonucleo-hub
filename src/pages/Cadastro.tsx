@@ -13,7 +13,9 @@ export default function Cadastro() {
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
+  const [confirmarSenha, setConfirmarSenha] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Redirect if already authenticated
@@ -23,7 +25,12 @@ export default function Cadastro() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!nome || !email || !senha) return;
+    if (!nome || !email || !senha || !confirmarSenha) return;
+    
+    if (senha !== confirmarSenha) {
+      // O useAuth já vai mostrar o erro via toast
+      return;
+    }
 
     setIsSubmitting(true);
     await signUp(email, senha, nome);
@@ -114,11 +121,42 @@ export default function Cadastro() {
                 </div>
               </div>
 
+              <div className="space-y-2">
+                <Label htmlFor="confirmarSenha">Confirmar Senha</Label>
+                <div className="relative">
+                  <Input
+                    id="confirmarSenha"
+                    type={showConfirmPassword ? "text" : "password"}
+                    value={confirmarSenha}
+                    onChange={(e) => setConfirmarSenha(e.target.value)}
+                    placeholder="Confirme sua senha"
+                    required
+                    className={`bg-background border-border pr-10 ${
+                      confirmarSenha && senha !== confirmarSenha 
+                        ? 'border-destructive focus-visible:ring-destructive' 
+                        : ''
+                    }`}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-0 top-0 h-full px-3"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  >
+                    {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </Button>
+                </div>
+                {confirmarSenha && senha !== confirmarSenha && (
+                  <p className="text-sm text-destructive">As senhas não coincidem</p>
+                )}
+              </div>
+
               <Button 
                 type="submit" 
                 className="w-full" 
                 variant="gradient"
-                disabled={isSubmitting || !nome || !email || !senha}
+                disabled={isSubmitting || !nome || !email || !senha || !confirmarSenha || senha !== confirmarSenha}
               >
                 {isSubmitting ? (
                   <div className="flex items-center gap-2">
