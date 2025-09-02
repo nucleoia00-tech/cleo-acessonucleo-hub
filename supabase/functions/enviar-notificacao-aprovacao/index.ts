@@ -36,7 +36,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const payload = {
-      from: "Equipe <no-reply@NucleoIA>",
+      from: Deno.env.get('RESEND_FROM') || 'Equipe <onboarding@resend.dev>',
       to: [email],
       subject: "Acesso aprovado 🎉",
       html: `<p>Olá ${nome}, seu acesso foi aprovado. Bem-vindo(a) à plataforma!</p>`
