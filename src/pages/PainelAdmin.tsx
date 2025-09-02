@@ -100,7 +100,7 @@ export default function PainelAdmin() {
 
   // Mutation to update member status
   const updateMemberMutation = useMutation({
-    mutationFn: async ({ id, status, observacao }: { id: string; status: string; observacao?: string }) => {
+    mutationFn: async ({ id, status, observacao, memberData }: { id: string; status: string; observacao?: string; memberData?: any }) => {
       const updates: any = { status };
       if (observacao !== undefined) {
         updates.observacao_admin = observacao;
@@ -112,6 +112,25 @@ export default function PainelAdmin() {
         .eq('id', id);
       
       if (error) throw error;
+
+      // Enviar notificação por email se o status for 'ativo' (aprovado)
+      if (status === 'ativo' && memberData) {
+        try {
+          const { error: emailError } = await supabase.functions.invoke('enviar-notificacao-aprovacao', {
+            body: {
+              email: memberData.email,
+              nome: memberData.nome
+            }
+          });
+          
+          if (emailError) {
+            console.error('Erro ao enviar notificação por email:', emailError);
+            // Não vamos falhar a operação se o email não for enviado
+          }
+        } catch (emailError) {
+          console.error('Erro ao enviar notificação por email:', emailError);
+        }
+      }
     },
     onSuccess: () => {
       toast({
@@ -172,13 +191,14 @@ export default function PainelAdmin() {
     setObservacao(member.observacao_admin || '');
     
     if (status === 'ativo') {
-      updateMemberMutation.mutate({ id: member.id, status });
+      updateMemberMutation.mutate({ id: member.id, status, memberData: member });
     } else {
       // For reject/suspend, we'll show a modal or inline form for observacao
       updateMemberMutation.mutate({ 
         id: member.id, 
         status, 
-        observacao: observacao || `Status alterado para ${status}` 
+        observacao: observacao || `Status alterado para ${status}`,
+        memberData: member
       });
     }
   };
