@@ -118,6 +118,10 @@ export type Database = {
         Args: { _user_id: string }
         Returns: boolean
       }
+      is_subscription_expired: {
+        Args: { user_uuid: string }
+        Returns: boolean
+      }
       registrar_log: {
         Args: { _acao: string; _usuario_email: string }
         Returns: undefined
