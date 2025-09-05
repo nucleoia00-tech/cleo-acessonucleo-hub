@@ -54,6 +54,20 @@ export function ProtectedRoute({ children, requiredRole, requiredStatus }: Prote
     return <Navigate to="/acesso-negado" replace />;
   }
 
+  // Check if subscription is expired and suspend automatically
+  const isExpired = profile.data_expiracao && new Date(profile.data_expiracao) < new Date();
+  if (isExpired && profile.status === 'ativo') {
+    // Trigger status update to suspended for expired active subscriptions
+    supabase
+      .from('assinantes')
+      .update({ status: 'suspenso' })
+      .eq('user_id', user.id)
+      .then(() => {
+        // Refresh the page to reflect the new status
+        window.location.reload();
+      });
+  }
+
   // Check status requirement
   if (requiredStatus && profile.status !== requiredStatus) {
     if (profile.status === 'pendente') {
@@ -70,13 +84,16 @@ export function ProtectedRoute({ children, requiredRole, requiredStatus }: Prote
     return <>{children}</>;
   }
 
-  // For assinante role, check if active
-  if (profile.role === 'assinante' && profile.status !== 'ativo') {
-    if (profile.status === 'pendente') {
-      return <Navigate to="/aguardando" replace />;
-    }
-    if (profile.status === 'suspenso' || profile.status === 'rejeitado') {
-      return <Navigate to="/bloqueado" replace />;
+  // For assinante role, check if active or if expired
+  if (profile.role === 'assinante') {
+    // If expired, treat as suspended
+    if (isExpired || profile.status !== 'ativo') {
+      if (profile.status === 'pendente') {
+        return <Navigate to="/aguardando" replace />;
+      }
+      if (profile.status === 'suspenso' || profile.status === 'rejeitado' || isExpired) {
+        return <Navigate to="/bloqueado" replace />;
+      }
     }
   }
 
