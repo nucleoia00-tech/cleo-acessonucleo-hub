@@ -13,6 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Logo } from '@/components/Logo';
 import { Settings, Users, Eye, EyeOff, Check, X, Clock, UserMinus, Calendar, RotateCcw, Copy } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 export default function PainelAdmin() {
@@ -180,6 +181,32 @@ export default function PainelAdmin() {
     }
   });
 
+  // Mutation to update plan
+  const updatePlanMutation = useMutation({
+    mutationFn: async ({ id, plano }: { id: string; plano: string }) => {
+      const { error } = await supabase
+        .from('assinantes')
+        .update({ plano })
+        .eq('id', id);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({
+        title: "Plano atualizado",
+        description: "O plano do assinante foi atualizado com sucesso.",
+      });
+      refetchAssinantes();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erro ao atualizar",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  });
+
   const handleSaveCredenciais = () => {
     updateCredenciaisMutation.mutate({
       email_login: emailLogin,
@@ -252,6 +279,13 @@ export default function PainelAdmin() {
     updateExpirationMutation.mutate({
       id: member.id,
       data_expiracao: newDate.toISOString()
+    });
+  };
+
+  const handleUpdatePlan = (memberId: string, newPlan: string) => {
+    updatePlanMutation.mutate({
+      id: memberId,
+      plano: newPlan
     });
   };
 
@@ -571,7 +605,7 @@ export default function PainelAdmin() {
                         <TableHead>E-mail</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>Expiração</TableHead>
-                        <TableHead>Último Login</TableHead>
+                        <TableHead>Plano</TableHead>
                         <TableHead>Cadastrado em</TableHead>
                         <TableHead>Ações</TableHead>
                       </TableRow>
@@ -598,11 +632,20 @@ export default function PainelAdmin() {
                           <TableCell>
                             {getExpirationStatus(member.data_expiracao, member.status)}
                           </TableCell>
-                          <TableCell className="text-sm text-muted-foreground">
-                            {member.ultimo_login 
-                              ? new Date(member.ultimo_login).toLocaleString('pt-BR')
-                              : 'Nunca'
-                            }
+                          <TableCell>
+                            <Select 
+                              value={member.plano || ''} 
+                              onValueChange={(value) => handleUpdatePlan(member.id, value)}
+                            >
+                              <SelectTrigger className="w-32">
+                                <SelectValue placeholder="Selecionar" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="mensal">Mensal</SelectItem>
+                                <SelectItem value="trimestral">Trimestral</SelectItem>
+                                <SelectItem value="semestral">Semestral</SelectItem>
+                              </SelectContent>
+                            </Select>
                           </TableCell>
                           <TableCell className="text-sm text-muted-foreground">
                             {new Date(member.criado_em).toLocaleDateString('pt-BR')}
