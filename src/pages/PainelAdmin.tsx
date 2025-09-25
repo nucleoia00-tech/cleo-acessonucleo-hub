@@ -338,6 +338,19 @@ export default function PainelAdmin() {
     }
   };
 
+  const getPlanBadge = (plano: string | null) => {
+    switch (plano) {
+      case 'mensal':
+        return <Badge className="bg-blue-500/10 text-blue-600 border-blue-500/20">Mensal</Badge>;
+      case 'trimestral':
+        return <Badge className="bg-orange-500/10 text-orange-600 border-orange-500/20">Trimestral</Badge>;
+      case 'semestral':
+        return <Badge className="bg-green-500/10 text-green-600 border-green-500/20">Semestral</Badge>;
+      default:
+        return <Badge variant="outline">Não definido</Badge>;
+    }
+  };
+
   // Copy emails function
   const copyEmails = async (members: any[], type: string) => {
     const emails = members.map(member => member.email).join(', ');
@@ -633,19 +646,37 @@ export default function PainelAdmin() {
                             {getExpirationStatus(member.data_expiracao, member.status)}
                           </TableCell>
                           <TableCell>
-                            <Select 
-                              value={member.plano || ''} 
-                              onValueChange={(value) => handleUpdatePlan(member.id, value)}
-                            >
-                              <SelectTrigger className="w-32">
-                                <SelectValue placeholder="Selecionar" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="mensal">Mensal</SelectItem>
-                                <SelectItem value="trimestral">Trimestral</SelectItem>
-                                <SelectItem value="semestral">Semestral</SelectItem>
-                              </SelectContent>
-                            </Select>
+                            <div className="flex items-center gap-2">
+                              {getPlanBadge(member.plano)}
+                              <Select 
+                                value={member.plano || ''} 
+                                onValueChange={(value) => handleUpdatePlan(member.id, value)}
+                              >
+                                <SelectTrigger className="w-32">
+                                  <SelectValue placeholder="Selecionar" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="mensal">
+                                    <div className="flex items-center gap-2">
+                                      <div className="w-2 h-2 rounded-full bg-blue-500"></div>
+                                      Mensal
+                                    </div>
+                                  </SelectItem>
+                                  <SelectItem value="trimestral">
+                                    <div className="flex items-center gap-2">
+                                      <div className="w-2 h-2 rounded-full bg-orange-500"></div>
+                                      Trimestral
+                                    </div>
+                                  </SelectItem>
+                                  <SelectItem value="semestral">
+                                    <div className="flex items-center gap-2">
+                                      <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                                      Semestral
+                                    </div>
+                                  </SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
                           </TableCell>
                           <TableCell className="text-sm text-muted-foreground">
                             {new Date(member.criado_em).toLocaleDateString('pt-BR')}
