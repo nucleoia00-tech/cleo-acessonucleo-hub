@@ -12,7 +12,6 @@ import Login from "./pages/Login";
 import Aguardando from "./pages/Aguardando";
 import Bloqueado from "./pages/Bloqueado";
 import PainelAdmin from "./pages/PainelAdmin";
-import TestePlanos from "./pages/TestePlanos";
 import AcessoAdspower from "./pages/AcessoAdspower";
 
 const queryClient = new QueryClient();
@@ -40,9 +39,6 @@ const App = () => (
                 </ProtectedRoute>
               } 
             />
-            
-            {/* Test Route - Remove before production */}
-            <Route path="/teste-planos" element={<TestePlanos />} />
             
             {/* Member Routes */}
             <Route 

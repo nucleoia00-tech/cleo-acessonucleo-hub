@@ -4,10 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Logo } from '@/components/Logo';
 import { useAuth } from '@/hooks/useAuth';
-import { Eye, EyeOff, Clock } from 'lucide-react';
+import { Eye, EyeOff } from 'lucide-react';
 
 export default function Cadastro() {
   const { user, signUp, loading } = useAuth();
@@ -15,7 +14,6 @@ export default function Cadastro() {
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [confirmarSenha, setConfirmarSenha] = useState('');
-  const [plano, setPlano] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -27,7 +25,7 @@ export default function Cadastro() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!nome || !email || !senha || !confirmarSenha || !plano) return;
+    if (!nome || !email || !senha || !confirmarSenha) return;
     
     if (senha !== confirmarSenha) {
       // O useAuth já vai mostrar o erro via toast
@@ -35,17 +33,8 @@ export default function Cadastro() {
     }
 
     setIsSubmitting(true);
-    await signUp(email, senha, nome, plano);
+    await signUp(email, senha, nome);
     setIsSubmitting(false);
-  };
-
-  const getPlanInfo = (planType: string) => {
-    const plans = {
-      mensal: { duration: '1 mês', price: 'R$ 97/mês' },
-      trimestral: { duration: '3 meses', price: 'R$ 267 (R$ 89/mês)' },
-      semestral: { duration: '6 meses', price: 'R$ 497 (R$ 82,83/mês)' }
-    };
-    return plans[planType as keyof typeof plans] || { duration: '', price: '' };
   };
 
   if (loading) {
@@ -163,59 +152,11 @@ export default function Cadastro() {
                 )}
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="plano">Selecionar Plano</Label>
-                <Select onValueChange={setPlano} required>
-                  <SelectTrigger className="bg-background border-border">
-                    <SelectValue placeholder="Escolha seu plano de acesso" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="mensal">
-                      <div className="flex items-center gap-3">
-                        <Clock className="w-4 h-4 text-primary" />
-                        <div>
-                          <div className="font-medium">Mensal</div>
-                          <div className="text-sm text-muted-foreground">R$ 97/mês</div>
-                        </div>
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="trimestral">
-                      <div className="flex items-center gap-3">
-                        <Clock className="w-4 h-4 text-accent" />
-                        <div>
-                          <div className="font-medium">Trimestral</div>
-                          <div className="text-sm text-muted-foreground">R$ 267 (R$ 89/mês)</div>
-                        </div>
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="semestral">
-                      <div className="flex items-center gap-3">
-                        <Clock className="w-4 h-4 text-secondary" />
-                        <div>
-                          <div className="font-medium">Semestral</div>
-                          <div className="text-sm text-muted-foreground">R$ 497 (R$ 82,83/mês)</div>
-                        </div>
-                      </div>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-                {plano && (
-                  <div className="p-3 bg-muted/50 rounded-md border">
-                    <p className="text-sm font-medium text-primary">
-                      Plano {plano.charAt(0).toUpperCase() + plano.slice(1)} selecionado
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      Duração: {getPlanInfo(plano).duration} • {getPlanInfo(plano).price}
-                    </p>
-                  </div>
-                )}
-              </div>
-
               <Button 
                 type="submit" 
                 className="w-full" 
                 variant="gradient"
-                disabled={isSubmitting || !nome || !email || !senha || !confirmarSenha || senha !== confirmarSenha || !plano}
+                disabled={isSubmitting || !nome || !email || !senha || !confirmarSenha || senha !== confirmarSenha}
               >
                 {isSubmitting ? (
                   <div className="flex items-center gap-2">
