@@ -11,9 +11,11 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Logo } from '@/components/Logo';
-import { Settings, Users, Eye, EyeOff, Check, X, Clock, UserMinus, Calendar, RotateCcw } from 'lucide-react';
+import { Settings, Users, Eye, EyeOff, Check, X, Clock, UserMinus, Calendar, RotateCcw, CreditCard } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { planOptions, getPlanInfo, calculateExpirationDate, getPlanBadgeVariant } from '@/utils/planUtils';
 
 export default function PainelAdmin() {
   const { signOut } = useAuth();
@@ -150,6 +152,42 @@ export default function PainelAdmin() {
     }
   });
 
+  // Mutation to update member plan
+  const updatePlanMutation = useMutation({
+    mutationFn: async ({ id, plano, autoCalculateExpiration = false }: { id: string; plano: string | null; autoCalculateExpiration?: boolean }) => {
+      const updates: any = { plano };
+      
+      // Auto calculate expiration if requested
+      if (autoCalculateExpiration && plano) {
+        const expirationDate = calculateExpirationDate(plano);
+        if (expirationDate) {
+          updates.data_expiracao = expirationDate.toISOString();
+        }
+      }
+      
+      const { error } = await supabase
+        .from('assinantes')
+        .update(updates)
+        .eq('id', id);
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({
+        title: "Plano atualizado",
+        description: "O plano do assinante foi atualizado com sucesso.",
+      });
+      refetchAssinantes();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erro ao atualizar plano",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  });
+
   // Mutation to update expiration date
   const updateExpirationMutation = useMutation({
     mutationFn: async ({ id, data_expiracao }: { id: string; data_expiracao: string | null }) => {
@@ -238,6 +276,39 @@ export default function PainelAdmin() {
       id: selectedMember.id,
       data_expiracao: dataExpiracao || null
     });
+  };
+
+  const handleApplyPlan = (member: any, planType: string) => {
+    updatePlanMutation.mutate({
+      id: member.id,
+      plano: planType,
+      autoCalculateExpiration: true
+    });
+  };
+
+  const handlePlanChange = (member: any, planType: string | null) => {
+    updatePlanMutation.mutate({
+      id: member.id,
+      plano: planType
+    });
+  };
+
+  const getPlanBadge = (plano: string | null) => {
+    if (!plano) {
+      return <Badge variant="outline" className="text-muted-foreground">Não definido</Badge>;
+    }
+    
+    const planInfo = getPlanInfo(plano);
+    if (!planInfo) {
+      return <Badge variant="outline">{plano}</Badge>;
+    }
+    
+    return (
+      <Badge variant={getPlanBadgeVariant(plano)} className="flex items-center gap-1">
+        <CreditCard className="w-3 h-3" />
+        {planInfo.label}
+      </Badge>
+    );
   };
 
   const handleExtendAccess = (member: any, months: number) => {
@@ -417,6 +488,7 @@ export default function PainelAdmin() {
                         <TableHead>Nome</TableHead>
                         <TableHead>E-mail</TableHead>
                         <TableHead>Status</TableHead>
+                        <TableHead>Plano</TableHead>
                         <TableHead>Expiração</TableHead>
                         <TableHead>Último Login</TableHead>
                         <TableHead>Cadastrado em</TableHead>
@@ -433,6 +505,30 @@ export default function PainelAdmin() {
                           <TableCell className="font-medium">{member.nome}</TableCell>
                           <TableCell>{member.email}</TableCell>
                           <TableCell>{getStatusBadge(member.status)}</TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              {getPlanBadge(member.plano)}
+                              {member.status === 'ativo' && (
+                                <Select
+                                  value={member.plano || ''}
+                                  onValueChange={(value) => handlePlanChange(member, value || null)}
+                                  disabled={updatePlanMutation.isPending}
+                                >
+                                  <SelectTrigger className="w-32 h-8 text-xs">
+                                    <SelectValue placeholder="Definir plano" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="">Nenhum</SelectItem>
+                                    {planOptions.map(plan => (
+                                      <SelectItem key={plan.value} value={plan.value}>
+                                        {plan.label}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              )}
+                            </div>
+                          </TableCell>
                           <TableCell>
                             {getExpirationStatus(member.data_expiracao, member.status)}
                           </TableCell>
@@ -477,11 +573,11 @@ export default function PainelAdmin() {
                                   onClick={() => handleUpdateMemberStatus(member, 'ativo')}
                                   disabled={updateMemberMutation.isPending}
                                 >
-                                  <Check className="w-3 h-3 mr-1" />
+                                  <RotateCcw className="w-3 h-3 mr-1" />
                                   Reativar
                                 </Button>
                               )}
-                              {member.status !== 'rejeitado' && (
+                              {(member.status === 'pendente' || member.status === 'suspenso') && (
                                 <Button
                                   size="sm"
                                   variant="destructive"
@@ -493,7 +589,21 @@ export default function PainelAdmin() {
                                 </Button>
                               )}
                               
-                              {/* Expiration Management Buttons */}
+                              {/* Plan Management Buttons */}
+                              {member.plano && member.status === 'ativo' && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleApplyPlan(member, member.plano)}
+                                  disabled={updatePlanMutation.isPending}
+                                  className="text-xs"
+                                >
+                                  <Calendar className="w-3 h-3 mr-1" />
+                                  Aplicar {getPlanInfo(member.plano)?.label}
+                                </Button>
+                              )}
+                              
+                              {/* Expiration Management Button */}
                               <Button
                                 size="sm"
                                 variant="outline"
@@ -504,16 +614,28 @@ export default function PainelAdmin() {
                                 Data
                               </Button>
                               
+                              {/* Quick extend buttons */}
                               {member.status === 'ativo' && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => handleExtendAccess(member, 1)}
-                                  disabled={updateExpirationMutation.isPending}
-                                >
-                                  <RotateCcw className="w-3 h-3 mr-1" />
-                                  +1 mês
-                                </Button>
+                                <>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => handleExtendAccess(member, 1)}
+                                    disabled={updateExpirationMutation.isPending}
+                                    className="text-xs px-2"
+                                  >
+                                    +1M
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => handleExtendAccess(member, 3)}
+                                    disabled={updateExpirationMutation.isPending}
+                                    className="text-xs px-2"
+                                  >
+                                    +3M
+                                  </Button>
+                                </>
                               )}
                             </div>
                           </TableCell>
@@ -528,19 +650,19 @@ export default function PainelAdmin() {
         </Tabs>
       </main>
 
-      {/* Expiration Date Modal */}
+      {/* Expiration Management Modal */}
       <Dialog open={showExpirationModal} onOpenChange={setShowExpirationModal}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="bg-card border-border">
           <DialogHeader>
             <DialogTitle>Gerenciar Data de Expiração</DialogTitle>
             <DialogDescription>
-              Defina ou altere a data de expiração do acesso para {selectedMember?.nome}
+              {selectedMember && `Configurar expiração para ${selectedMember.nome}`}
             </DialogDescription>
           </DialogHeader>
           
-          <div className="space-y-4 py-4">
+          <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="data-expiracao">Data de Expiração</Label>
+              <Label htmlFor="data-expiracao">Data e Hora de Expiração</Label>
               <Input
                 id="data-expiracao"
                 type="datetime-local"
@@ -548,58 +670,33 @@ export default function PainelAdmin() {
                 onChange={(e) => setDataExpiracao(e.target.value)}
                 className="bg-background border-border"
               />
-              <p className="text-sm text-muted-foreground">
-                Deixe em branco para acesso sem data limite
-              </p>
             </div>
             
-            <div className="space-y-2">
-              <Label>Ações Rápidas</Label>
-              <div className="flex gap-2 flex-wrap">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    const date = new Date();
-                    date.setMonth(date.getMonth() + 1);
-                    setDataExpiracao(date.toISOString().slice(0, 16));
-                  }}
-                >
-                  +1 mês
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    const date = new Date();
-                    date.setMonth(date.getMonth() + 3);
-                    setDataExpiracao(date.toISOString().slice(0, 16));
-                  }}
-                >
-                  +3 meses
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    const date = new Date();
-                    date.setFullYear(date.getFullYear() + 1);
-                    setDataExpiracao(date.toISOString().slice(0, 16));
-                  }}
-                >
-                  +1 ano
-                </Button>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => setDataExpiracao('')}
-                >
-                  Remover limite
-                </Button>
+            {/* Quick actions for plan-based extensions */}
+            {selectedMember?.plano && (
+              <div className="space-y-2">
+                <Label>Ações Rápidas baseadas no plano atual: {getPlanInfo(selectedMember.plano)?.label}</Label>
+                <div className="flex gap-2 flex-wrap">
+                  {planOptions.map(plan => (
+                    <Button
+                      key={plan.value}
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        const newDate = calculateExpirationDate(plan.value, selectedMember.data_expiracao ? new Date(selectedMember.data_expiracao) : undefined);
+                        if (newDate) {
+                          setDataExpiracao(newDate.toISOString().slice(0, 16));
+                        }
+                      }}
+                    >
+                      Estender {plan.label} (+{plan.months}M)
+                    </Button>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
           </div>
-
+          
           <DialogFooter>
             <Button
               variant="outline"
