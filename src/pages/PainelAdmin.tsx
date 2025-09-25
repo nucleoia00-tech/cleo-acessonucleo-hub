@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
 import { Logo } from '@/components/Logo';
-import { Settings, Users, Eye, EyeOff, Check, X, Clock, UserMinus, Calendar, RotateCcw, Copy, BarChart3, PieChart, TrendingUp, DollarSign, Target, AlertTriangle } from 'lucide-react';
+import { Settings, Users, Eye, EyeOff, Check, X, Clock, UserMinus, Calendar, RotateCcw, Copy, BarChart3, PieChart, TrendingUp, TrendingDown, DollarSign, Target, AlertTriangle, Plus, Edit, Trash2, Receipt } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent } from '@/components/ui/chart';
@@ -35,6 +35,17 @@ export default function PainelAdmin() {
   const [dataExpiracao, setDataExpiracao] = useState('');
   const [showExpirationModal, setShowExpirationModal] = useState(false);
   const [orderByExpiration, setOrderByExpiration] = useState(false);
+
+  // Monthly expenses state
+  const [gastosOperacionais, setGastosOperacionais] = useState<Array<{
+    id: string;
+    nome: string;
+    valor: number;
+    ativo: boolean;
+  }>>([]);
+  const [showGastosModal, setShowGastosModal] = useState(false);
+  const [novoGasto, setNovoGasto] = useState({ nome: '', valor: '' });
+  const [editandoGasto, setEditandoGasto] = useState<string | null>(null);
 
   // Fetch credenciais AdsPower
   const { data: credenciais, refetch: refetchCredenciais } = useQuery({
@@ -71,6 +82,34 @@ export default function PainelAdmin() {
       setSenhaAtual(credenciais.senha_atual || '');
     }
   });
+
+  // Initialize monthly expenses from localStorage
+  useEffect(() => {
+    const savedGastos = localStorage.getItem('gastosOperacionais');
+    if (savedGastos) {
+      setGastosOperacionais(JSON.parse(savedGastos));
+    } else {
+      // Set initial predefined expenses
+      const gastosIniciais = [
+        { id: '1', nome: 'LEONARDO IA', valor: 160.00, ativo: true },
+        { id: '2', nome: 'MIDJOURNEY', valor: 350.00, ativo: true },
+        { id: '3', nome: 'FREEPIK', valor: 197.00, ativo: true },
+        { id: '4', nome: 'HEY GEN', valor: 320.00, ativo: true },
+        { id: '5', nome: 'CHAT GPT4', valor: 119.00, ativo: true },
+        { id: '6', nome: 'HAILUO', valor: 700.00, ativo: true },
+        { id: '7', nome: 'GAMMA IA', valor: 80.00, ativo: true }
+      ];
+      setGastosOperacionais(gastosIniciais);
+      localStorage.setItem('gastosOperacionais', JSON.stringify(gastosIniciais));
+    }
+  }, []);
+
+  // Save expenses to localStorage whenever they change
+  useEffect(() => {
+    if (gastosOperacionais.length > 0) {
+      localStorage.setItem('gastosOperacionais', JSON.stringify(gastosOperacionais));
+    }
+  }, [gastosOperacionais]);
 
   // Mutation to update credenciais
   const updateCredenciaisMutation = useMutation({
@@ -360,6 +399,55 @@ export default function PainelAdmin() {
     semestral: { valor: 198.00, periodo: 6, cor: 'hsl(145, 60%, 55%)' }
   };
 
+  // Monthly expenses management functions
+  const handleAddGasto = () => {
+    if (!novoGasto.nome.trim() || !novoGasto.valor || parseFloat(novoGasto.valor) <= 0) {
+      toast({
+        title: "Erro",
+        description: "Preencha o nome e um valor válido.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const newGasto = {
+      id: Date.now().toString(),
+      nome: novoGasto.nome.trim(),
+      valor: parseFloat(novoGasto.valor),
+      ativo: true
+    };
+
+    setGastosOperacionais([...gastosOperacionais, newGasto]);
+    setNovoGasto({ nome: '', valor: '' });
+    
+    toast({
+      title: "Gasto adicionado",
+      description: `${newGasto.nome} foi adicionado aos gastos operacionais.`,
+    });
+  };
+
+  const handleRemoveGasto = (id: string) => {
+    const gasto = gastosOperacionais.find(g => g.id === id);
+    setGastosOperacionais(gastosOperacionais.filter(g => g.id !== id));
+    
+    toast({
+      title: "Gasto removido",
+      description: `${gasto?.nome} foi removido dos gastos operacionais.`,
+    });
+  };
+
+  const handleEditGasto = (id: string, nome: string, valor: number) => {
+    setGastosOperacionais(gastosOperacionais.map(g => 
+      g.id === id ? { ...g, nome, valor } : g
+    ));
+    setEditandoGasto(null);
+    
+    toast({
+      title: "Gasto atualizado",
+      description: "O gasto foi atualizado com sucesso.",
+    });
+  };
+
   const getAnalyticsData = () => {
     if (!assinantes) return null;
 
@@ -385,6 +473,14 @@ export default function PainelAdmin() {
     const mrr = faturamentoMensal + (faturamentoTrimestral / 3) + (faturamentoSemestral / 6);
     const arr = mrr * 12; // Annual Recurring Revenue
     const arpu = assinantesAtivos.length > 0 ? faturamentoTotal / assinantesAtivos.length : 0;
+
+    // Monthly expenses calculations
+    const gastosMensaisTotais = gastosOperacionais
+      .filter(g => g.ativo)
+      .reduce((total, gasto) => total + gasto.valor, 0);
+    
+    const faturamentoLiquido = faturamentoTotal - gastosMensaisTotais;
+    const margemLiquida = faturamentoTotal > 0 ? (faturamentoLiquido / faturamentoTotal) * 100 : 0;
 
     // Chart data
     const pieChartData = [
@@ -413,6 +509,9 @@ export default function PainelAdmin() {
       mrr,
       arr,
       arpu,
+      gastosMensaisTotais,
+      faturamentoLiquido,
+      margemLiquida,
       pieChartData,
       barChartData
     };
@@ -812,7 +911,7 @@ export default function PainelAdmin() {
                     <CardContent className="p-6">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-sm font-medium text-muted-foreground">Faturamento Total</p>
+                          <p className="text-sm font-medium text-muted-foreground">Faturamento Bruto</p>
                           <p className="text-2xl font-bold text-green-600">
                             R$ {analyticsData.faturamentoTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                           </p>
@@ -826,12 +925,12 @@ export default function PainelAdmin() {
                     <CardContent className="p-6">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-sm font-medium text-muted-foreground">Receita Mensal (MRR)</p>
-                          <p className="text-2xl font-bold text-blue-600">
-                            R$ {analyticsData.mrr.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                          <p className="text-sm font-medium text-muted-foreground">Gastos Mensais</p>
+                          <p className="text-2xl font-bold text-red-600">
+                            R$ {analyticsData.gastosMensaisTotais.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                           </p>
                         </div>
-                        <TrendingUp className="w-8 h-8 text-blue-600" />
+                        <Receipt className="w-8 h-8 text-red-600" />
                       </div>
                     </CardContent>
                   </Card>
@@ -840,16 +939,73 @@ export default function PainelAdmin() {
                     <CardContent className="p-6">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-sm font-medium text-muted-foreground">ARPU Médio</p>
-                          <p className="text-2xl font-bold text-orange-600">
-                            R$ {analyticsData.arpu.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                          <p className="text-sm font-medium text-muted-foreground">Faturamento Líquido</p>
+                          <p className={`text-2xl font-bold ${analyticsData.faturamentoLiquido >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            R$ {analyticsData.faturamentoLiquido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                           </p>
                         </div>
-                        <Target className="w-8 h-8 text-orange-600" />
+                        {analyticsData.faturamentoLiquido >= 0 ? (
+                          <TrendingUp className="w-8 h-8 text-green-600" />
+                        ) : (
+                          <TrendingDown className="w-8 h-8 text-red-600" />
+                        )}
                       </div>
                     </CardContent>
                   </Card>
                 </div>
+
+                {/* Monthly Expenses Management */}
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle className="flex items-center gap-2">
+                          <Receipt className="w-5 h-5" />
+                          Gastos Operacionais Mensais
+                        </CardTitle>
+                        <CardDescription>
+                          Gerencie os gastos fixos da operação
+                        </CardDescription>
+                      </div>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => setShowGastosModal(true)}
+                      >
+                        <Settings className="w-4 h-4 mr-2" />
+                        Gerenciar
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                      {gastosOperacionais.filter(g => g.ativo).map((gasto) => (
+                        <div key={gasto.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                          <div>
+                            <p className="font-medium text-sm">{gasto.nome}</p>
+                            <p className="text-red-600 font-semibold">
+                              R$ {gasto.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="mt-4 pt-4 border-t">
+                      <div className="flex justify-between items-center">
+                        <span className="font-semibold">Total dos Gastos:</span>
+                        <span className="text-xl font-bold text-red-600">
+                          R$ {analyticsData.gastosMensaisTotais.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center mt-2">
+                        <span className="font-semibold">Margem Líquida:</span>
+                        <span className={`text-lg font-bold ${analyticsData.margemLiquida >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {analyticsData.margemLiquida.toFixed(1)}%
+                        </span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
 
                 {/* Charts Section */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -1226,6 +1382,125 @@ export default function PainelAdmin() {
               disabled={updateExpirationMutation.isPending}
             >
               {updateExpirationMutation.isPending ? 'Salvando...' : 'Salvar'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Monthly Expenses Management Modal */}
+      <Dialog open={showGastosModal} onOpenChange={setShowGastosModal}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Gerenciar Gastos Mensais</DialogTitle>
+            <DialogDescription>
+              Adicione, edite ou remova os gastos operacionais mensais
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            {/* Add new expense form */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 p-4 bg-muted/30 rounded-lg">
+              <div>
+                <Label htmlFor="novo-gasto-nome">Nome do Gasto</Label>
+                <Input
+                  id="novo-gasto-nome"
+                  placeholder="Ex: Leonardo IA"
+                  value={novoGasto.nome}
+                  onChange={(e) => setNovoGasto({...novoGasto, nome: e.target.value})}
+                />
+              </div>
+              <div>
+                <Label htmlFor="novo-gasto-valor">Valor (R$)</Label>
+                <Input
+                  id="novo-gasto-valor"
+                  type="number"
+                  step="0.01"
+                  placeholder="0,00"
+                  value={novoGasto.valor}
+                  onChange={(e) => setNovoGasto({...novoGasto, valor: e.target.value})}
+                />
+              </div>
+              <div className="flex items-end">
+                <Button onClick={handleAddGasto} className="w-full">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Adicionar
+                </Button>
+              </div>
+            </div>
+
+            {/* Expenses list */}
+            <div className="space-y-2 max-h-80 overflow-y-auto">
+              {gastosOperacionais.map((gasto) => (
+                <div key={gasto.id} className="flex items-center justify-between p-3 border rounded-lg">
+                  {editandoGasto === gasto.id ? (
+                    <div className="flex-1 grid grid-cols-2 gap-2 mr-2">
+                      <Input
+                        defaultValue={gasto.nome}
+                        onBlur={(e) => handleEditGasto(gasto.id, e.target.value, gasto.valor)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            handleEditGasto(gasto.id, e.currentTarget.value, gasto.valor);
+                          }
+                        }}
+                      />
+                      <Input
+                        type="number"
+                        step="0.01"
+                        defaultValue={gasto.valor}
+                        onBlur={(e) => handleEditGasto(gasto.id, gasto.nome, parseFloat(e.target.value))}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            handleEditGasto(gasto.id, gasto.nome, parseFloat(e.currentTarget.value));
+                          }
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <div className="flex-1">
+                      <p className="font-medium">{gasto.nome}</p>
+                      <p className="text-sm text-red-600 font-semibold">
+                        R$ {gasto.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      </p>
+                    </div>
+                  )}
+                  
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setEditandoGasto(editandoGasto === gasto.id ? null : gasto.id)}
+                    >
+                      <Edit className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      onClick={() => handleRemoveGasto(gasto.id)}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="pt-4 border-t">
+              <div className="flex justify-between items-center">
+                <span className="font-semibold">Total dos Gastos:</span>
+                <span className="text-lg font-bold text-red-600">
+                  R$ {gastosOperacionais
+                    .filter(g => g.ativo)
+                    .reduce((total, gasto) => total + gasto.valor, 0)
+                    .toLocaleString('pt-BR', { minimumFractionDigits: 2 })
+                  }
+                </span>
+              </div>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowGastosModal(false)}>
+              Fechar
             </Button>
           </DialogFooter>
         </DialogContent>
