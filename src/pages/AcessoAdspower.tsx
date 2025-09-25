@@ -7,14 +7,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Skeleton } from '@/components/ui/skeleton';
 import { Logo } from '@/components/Logo';
 import { Copy, ExternalLink, Key } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 
 export default function AcessoAdspower() {
   const { signOut } = useAuth();
   const { toast } = useToast();
   const [showCredentials, setShowCredentials] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [lastGeneratedTime, setLastGeneratedTime] = useState<string | null>(null);
 
   // Fetch credenciais AdsPower
   const { data: credenciais, isLoading, error } = useQuery({
@@ -34,24 +33,6 @@ export default function AcessoAdspower() {
     retry: 1,
     refetchOnWindowFocus: false,
   });
-
-  // Verifica se as credenciais foram atualizadas pelo admin
-  useEffect(() => {
-    if (credenciais?.ultima_atualizacao && lastGeneratedTime) {
-      const credentialsUpdated = new Date(credenciais.ultima_atualizacao);
-      const lastGenerated = new Date(lastGeneratedTime);
-      
-      // Se as credenciais foram atualizadas após a última geração do usuário
-      if (credentialsUpdated > lastGenerated) {
-        setShowCredentials(false);
-        toast({
-          title: "Credenciais atualizadas",
-          description: "O administrador atualizou as credenciais. Clique em 'Gerar Senha' novamente.",
-          variant: "default"
-        });
-      }
-    }
-  }, [credenciais?.ultima_atualizacao, lastGeneratedTime, toast]);
 
   const handleCopyPassword = async () => {
     if (credenciais?.senha_atual) {
@@ -95,8 +76,6 @@ export default function AcessoAdspower() {
     // Simula o processo de geração da senha com delay
     await new Promise(resolve => setTimeout(resolve, 2500));
     
-    const currentTime = new Date().toISOString();
-    setLastGeneratedTime(currentTime);
     setIsGenerating(false);
     setShowCredentials(true);
     
