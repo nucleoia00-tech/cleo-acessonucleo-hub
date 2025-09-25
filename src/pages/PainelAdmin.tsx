@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
 import { Logo } from '@/components/Logo';
-import { Settings, Users, Eye, EyeOff, Check, X, Clock, UserMinus, Calendar, RotateCcw } from 'lucide-react';
+import { Settings, Users, Eye, EyeOff, Check, X, Clock, UserMinus, Calendar, RotateCcw, Copy } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 export default function PainelAdmin() {
@@ -282,6 +282,30 @@ export default function PainelAdmin() {
     member.status === 'ativo' && isExpired(member.data_expiracao)
   ) || [];
 
+  // Filter active members (not expired)
+  const assinantesAtivos = assinantes?.filter(member => 
+    member.status === 'ativo' && !isExpired(member.data_expiracao)
+  ) || [];
+
+  // Copy emails function
+  const copyEmails = async (members: any[], type: string) => {
+    const emails = members.map(member => member.email).join(', ');
+    
+    try {
+      await navigator.clipboard.writeText(emails);
+      toast({
+        title: "Emails copiados!",
+        description: `${members.length} email(s) de membros ${type} copiado(s) para a área de transferência.`,
+      });
+    } catch (err) {
+      toast({
+        title: "Erro ao copiar",
+        description: "Não foi possível copiar os emails.",
+        variant: "destructive"
+      });
+    }
+  };
+
   // Sort members by expiration date
   const sortedAssinantes = assinantes
     ?.filter((member) =>
@@ -495,6 +519,32 @@ export default function PainelAdmin() {
                     <RotateCcw className="w-4 h-4" />
                     {orderByExpiration ? 'Ordenação ativa' : 'Ordenar por expiração'}
                   </Button>
+                  
+                  {/* Copy Emails Buttons */}
+                  <div className="flex items-center gap-2 ml-auto">
+                    {assinantesAtivos.length > 0 && (
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => copyEmails(assinantesAtivos, 'ativos')}
+                        className="flex items-center gap-2"
+                      >
+                        <Copy className="w-4 h-4" />
+                        Copiar emails ativos ({assinantesAtivos.length})
+                      </Button>
+                    )}
+                    {assinantesExpirados.length > 0 && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => copyEmails(assinantesExpirados, 'expirados')}
+                        className="flex items-center gap-2 text-destructive border-destructive hover:bg-destructive/10"
+                      >
+                        <Copy className="w-4 h-4" />
+                        Copiar emails expirados ({assinantesExpirados.length})
+                      </Button>
+                    )}
+                  </div>
                 </div>
                 <div className="rounded-md border border-border">
                   <Table>
