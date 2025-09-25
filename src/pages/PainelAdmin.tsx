@@ -351,25 +351,6 @@ export default function PainelAdmin() {
     }
   };
 
-  // Copy emails function
-  const copyEmails = async (members: any[], type: string) => {
-    const emails = members.map(member => member.email).join(', ');
-    
-    try {
-      await navigator.clipboard.writeText(emails);
-      toast({
-        title: "Emails copiados!",
-        description: `${members.length} email(s) de membros ${type} copiado(s) para a área de transferência.`,
-      });
-    } catch (err) {
-      toast({
-        title: "Erro ao copiar",
-        description: "Não foi possível copiar os emails.",
-        variant: "destructive"
-      });
-    }
-  };
-
   // Sort members by expiration date
   const sortedAssinantes = assinantes
     ?.filter((member) =>
@@ -583,32 +564,6 @@ export default function PainelAdmin() {
                     <RotateCcw className="w-4 h-4" />
                     {orderByExpiration ? 'Ordenação ativa' : 'Ordenar por expiração'}
                   </Button>
-                  
-                  {/* Copy Emails Buttons */}
-                  <div className="flex items-center gap-2 ml-auto">
-                    {assinantesAtivos.length > 0 && (
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => copyEmails(assinantesAtivos, 'ativos')}
-                        className="flex items-center gap-2"
-                      >
-                        <Copy className="w-4 h-4" />
-                        Copiar emails ativos ({assinantesAtivos.length})
-                      </Button>
-                    )}
-                    {assinantesExpirados.length > 0 && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => copyEmails(assinantesExpirados, 'expirados')}
-                        className="flex items-center gap-2 text-destructive border-destructive hover:bg-destructive/10"
-                      >
-                        <Copy className="w-4 h-4" />
-                        Copiar emails expirados ({assinantesExpirados.length})
-                      </Button>
-                    )}
-                  </div>
                 </div>
                 <div className="rounded-md border border-border">
                   <Table>
