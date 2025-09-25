@@ -31,6 +31,7 @@ export default function PainelAdmin() {
   const [emailQuery, setEmailQuery] = useState('');
   const [dataExpiracao, setDataExpiracao] = useState('');
   const [showExpirationModal, setShowExpirationModal] = useState(false);
+  const [orderByExpiration, setOrderByExpiration] = useState(false);
 
   // Fetch credenciais AdsPower
   const { data: credenciais, refetch: refetchCredenciais } = useQuery({
@@ -276,6 +277,28 @@ export default function PainelAdmin() {
     );
   };
 
+  // Filter expired members
+  const assinantesExpirados = assinantes?.filter(member => 
+    member.status === 'ativo' && isExpired(member.data_expiracao)
+  ) || [];
+
+  // Sort members by expiration date
+  const sortedAssinantes = assinantes
+    ?.filter((member) =>
+      (member.email || '').toLowerCase().includes(emailQuery.trim().toLowerCase())
+    )
+    .sort((a, b) => {
+      if (!orderByExpiration) return 0;
+      
+      // Members without expiration go to end
+      if (!a.data_expiracao && !b.data_expiracao) return 0;
+      if (!a.data_expiracao) return 1;
+      if (!b.data_expiracao) return -1;
+      
+      // Sort by expiration date (closest first)
+      return new Date(a.data_expiracao).getTime() - new Date(b.data_expiracao).getTime();
+    }) || [];
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -392,6 +415,58 @@ export default function PainelAdmin() {
 
           {/* Assinantes Tab */}
           <TabsContent value="assinantes">
+            {/* Expired Members Alert */}
+            {assinantesExpirados.length > 0 && (
+              <Card className="mb-6 bg-destructive/5 border-destructive/20">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-destructive">
+                    <Clock className="w-5 h-5" />
+                    Assinaturas Expiradas ({assinantesExpirados.length})
+                  </CardTitle>
+                  <CardDescription>
+                    Membros ativos com assinaturas vencidas que precisam de atenção
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid gap-2">
+                    {assinantesExpirados.slice(0, 5).map((member) => (
+                      <div key={member.id} className="flex items-center justify-between p-3 bg-background rounded-lg border">
+                        <div className="flex flex-col">
+                          <span className="font-medium">{member.nome}</span>
+                          <span className="text-sm text-muted-foreground">{member.email}</span>
+                          <span className="text-xs text-destructive">
+                            Expirou em {new Date(member.data_expiracao).toLocaleDateString('pt-BR')}
+                          </span>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleExpirationModal(member)}
+                          >
+                            <Calendar className="w-4 h-4 mr-1" />
+                            Renovar
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => handleUpdateMemberStatus(member, 'suspenso')}
+                          >
+                            Suspender
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                    {assinantesExpirados.length > 5 && (
+                      <p className="text-sm text-muted-foreground text-center mt-2">
+                        E mais {assinantesExpirados.length - 5} membro(s) expirado(s)...
+                      </p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             <Card className="bg-card border-border">
               <CardHeader>
                 <CardTitle>Gestão de Assinantes</CardTitle>
@@ -400,15 +475,26 @@ export default function PainelAdmin() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="mb-4 flex items-center gap-3">
-                  <Label htmlFor="busca-email" className="whitespace-nowrap">Buscar por e-mail</Label>
-                  <Input
-                    id="busca-email"
-                    value={emailQuery}
-                    onChange={(e) => setEmailQuery(e.target.value)}
-                    placeholder="ex: usuario@dominio.com"
-                    className="max-w-md bg-background border-border"
-                  />
+                <div className="mb-4 flex items-center gap-3 flex-wrap">
+                  <div className="flex items-center gap-3">
+                    <Label htmlFor="busca-email" className="whitespace-nowrap">Buscar por e-mail</Label>
+                    <Input
+                      id="busca-email"
+                      value={emailQuery}
+                      onChange={(e) => setEmailQuery(e.target.value)}
+                      placeholder="ex: usuario@dominio.com"
+                      className="max-w-md bg-background border-border"
+                    />
+                  </div>
+                  <Button
+                    variant={orderByExpiration ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setOrderByExpiration(!orderByExpiration)}
+                    className="flex items-center gap-2"
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                    {orderByExpiration ? 'Ordenação ativa' : 'Ordenar por expiração'}
+                  </Button>
                 </div>
                 <div className="rounded-md border border-border">
                   <Table>
@@ -424,11 +510,7 @@ export default function PainelAdmin() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {assinantes
-                        ?.filter((member) =>
-                          (member.email || '').toLowerCase().includes(emailQuery.trim().toLowerCase())
-                        )
-                        .map((member) => (
+                      {sortedAssinantes.map((member) => (
                         <TableRow key={member.id}>
                           <TableCell className="font-medium">{member.nome}</TableCell>
                           <TableCell>{member.email}</TableCell>
