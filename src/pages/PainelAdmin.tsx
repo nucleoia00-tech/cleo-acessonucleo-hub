@@ -287,6 +287,23 @@ export default function PainelAdmin() {
     member.status === 'ativo' && !isExpired(member.data_expiracao)
   ) || [];
 
+  // Copy individual email function
+  const copyIndividualEmail = async (email: string, nome: string) => {
+    try {
+      await navigator.clipboard.writeText(email);
+      toast({
+        title: "Email copiado!",
+        description: `Email de ${nome} copiado para a área de transferência.`,
+      });
+    } catch (err) {
+      toast({
+        title: "Erro ao copiar",
+        description: "Não foi possível copiar o email.",
+        variant: "destructive"
+      });
+    }
+  };
+
   // Copy emails function
   const copyEmails = async (members: any[], type: string) => {
     const emails = members.map(member => member.email).join(', ');
@@ -563,7 +580,20 @@ export default function PainelAdmin() {
                       {sortedAssinantes.map((member) => (
                         <TableRow key={member.id}>
                           <TableCell className="font-medium">{member.nome}</TableCell>
-                          <TableCell>{member.email}</TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <span>{member.email}</span>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 opacity-60 hover:opacity-100"
+                                onClick={() => copyIndividualEmail(member.email, member.nome)}
+                                title={`Copiar email de ${member.nome}`}
+                              >
+                                <Copy className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </TableCell>
                           <TableCell>{getStatusBadge(member.status)}</TableCell>
                           <TableCell>
                             {getExpirationStatus(member.data_expiracao, member.status)}
