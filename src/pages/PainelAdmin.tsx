@@ -12,9 +12,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
 import { Logo } from '@/components/Logo';
-import { Settings, Users, Eye, EyeOff, Check, X, Clock, UserMinus, Calendar, RotateCcw, Copy } from 'lucide-react';
+import { Settings, Users, Eye, EyeOff, Check, X, Clock, UserMinus, Calendar, RotateCcw, Copy, BarChart3, PieChart, TrendingUp, DollarSign, Target, AlertTriangle } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent } from '@/components/ui/chart';
+import { PieChart as RechartsPieChart, Cell, BarChart, Bar, XAxis, YAxis, ResponsiveContainer } from 'recharts';
 
 export default function PainelAdmin() {
   const { signOut } = useAuth();
@@ -351,6 +353,73 @@ export default function PainelAdmin() {
     }
   };
 
+  // Analytics calculations
+  const PLANOS = {
+    mensal: { valor: 55.00, periodo: 1, cor: 'hsl(215, 70%, 65%)' },
+    trimestral: { valor: 109.00, periodo: 3, cor: 'hsl(35, 85%, 60%)' },
+    semestral: { valor: 198.00, periodo: 6, cor: 'hsl(145, 60%, 55%)' }
+  };
+
+  const getAnalyticsData = () => {
+    if (!assinantes) return null;
+
+    const assinantesAtivos = assinantes.filter(member => 
+      member.status === 'ativo' && !isExpired(member.data_expiracao)
+    );
+
+    // Plan distribution
+    const planCounts = {
+      mensal: assinantesAtivos.filter(m => m.plano === 'mensal').length,
+      trimestral: assinantesAtivos.filter(m => m.plano === 'trimestral').length,
+      semestral: assinantesAtivos.filter(m => m.plano === 'semestral').length,
+      naoDefinido: assinantesAtivos.filter(m => !m.plano || m.plano === null).length
+    };
+
+    // Revenue calculations
+    const faturamentoMensal = planCounts.mensal * PLANOS.mensal.valor;
+    const faturamentoTrimestral = planCounts.trimestral * PLANOS.trimestral.valor;
+    const faturamentoSemestral = planCounts.semestral * PLANOS.semestral.valor;
+    const faturamentoTotal = faturamentoMensal + faturamentoTrimestral + faturamentoSemestral;
+
+    // MRR calculation (Monthly Recurring Revenue)
+    const mrr = faturamentoMensal + (faturamentoTrimestral / 3) + (faturamentoSemestral / 6);
+    const arr = mrr * 12; // Annual Recurring Revenue
+    const arpu = assinantesAtivos.length > 0 ? faturamentoTotal / assinantesAtivos.length : 0;
+
+    // Chart data
+    const pieChartData = [
+      { name: 'Mensal', value: planCounts.mensal, fill: PLANOS.mensal.cor, price: PLANOS.mensal.valor },
+      { name: 'Trimestral', value: planCounts.trimestral, fill: PLANOS.trimestral.cor, price: PLANOS.trimestral.valor },
+      { name: 'Semestral', value: planCounts.semestral, fill: PLANOS.semestral.cor, price: PLANOS.semestral.valor },
+      { name: 'Não definido', value: planCounts.naoDefinido, fill: 'hsl(210, 10%, 60%)', price: 0 }
+    ].filter(item => item.value > 0);
+
+    const barChartData = [
+      { name: 'Mensal', value: faturamentoMensal, fill: PLANOS.mensal.cor },
+      { name: 'Trimestral', value: faturamentoTrimestral, fill: PLANOS.trimestral.cor },
+      { name: 'Semestral', value: faturamentoSemestral, fill: PLANOS.semestral.cor }
+    ];
+
+    return {
+      totalAtivos: assinantesAtivos.length,
+      totalPendentes: assinantes.filter(m => m.status === 'pendente').length,
+      totalExpirados: assinantes.filter(m => m.status === 'ativo' && isExpired(m.data_expiracao)).length,
+      totalSuspensos: assinantes.filter(m => m.status === 'suspenso').length,
+      planCounts,
+      faturamentoTotal,
+      faturamentoMensal,
+      faturamentoTrimestral,
+      faturamentoSemestral,
+      mrr,
+      arr,
+      arpu,
+      pieChartData,
+      barChartData
+    };
+  };
+
+  const analyticsData = getAnalyticsData();
+
   // Sort members by expiration date
   const sortedAssinantes = assinantes
     ?.filter((member) =>
@@ -408,7 +477,7 @@ export default function PainelAdmin() {
         </div>
 
         <Tabs defaultValue="credenciais" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="credenciais" className="flex items-center gap-2">
               <Settings className="w-4 h-4" />
               Acesso AdsPower
@@ -416,6 +485,10 @@ export default function PainelAdmin() {
             <TabsTrigger value="assinantes" className="flex items-center gap-2">
               <Users className="w-4 h-4" />
               Gestão de Assinantes
+            </TabsTrigger>
+            <TabsTrigger value="analytics" className="flex items-center gap-2">
+              <BarChart3 className="w-4 h-4" />
+              Analytics
             </TabsTrigger>
           </TabsList>
 
@@ -715,6 +788,356 @@ export default function PainelAdmin() {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* Analytics Tab */}
+          <TabsContent value="analytics">
+            {analyticsData && (
+              <div className="space-y-6">
+                {/* Metrics Overview Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <Card>
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground">Membros Ativos</p>
+                          <p className="text-2xl font-bold text-primary">{analyticsData.totalAtivos}</p>
+                        </div>
+                        <Users className="w-8 h-8 text-primary" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                  
+                  <Card>
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground">Faturamento Total</p>
+                          <p className="text-2xl font-bold text-green-600">
+                            R$ {analyticsData.faturamentoTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                          </p>
+                        </div>
+                        <DollarSign className="w-8 h-8 text-green-600" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                  
+                  <Card>
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground">Receita Mensal (MRR)</p>
+                          <p className="text-2xl font-bold text-blue-600">
+                            R$ {analyticsData.mrr.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                          </p>
+                        </div>
+                        <TrendingUp className="w-8 h-8 text-blue-600" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                  
+                  <Card>
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground">ARPU Médio</p>
+                          <p className="text-2xl font-bold text-orange-600">
+                            R$ {analyticsData.arpu.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                          </p>
+                        </div>
+                        <Target className="w-8 h-8 text-orange-600" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Charts Section */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Plan Distribution Pie Chart */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <PieChart className="w-5 h-5" />
+                        Distribuição de Planos
+                      </CardTitle>
+                      <CardDescription>
+                        Quantidade de assinantes por tipo de plano
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <ChartContainer
+                        config={{
+                          mensal: { label: "Mensal", color: "hsl(215, 70%, 65%)" },
+                          trimestral: { label: "Trimestral", color: "hsl(35, 85%, 60%)" },
+                          semestral: { label: "Semestral", color: "hsl(145, 60%, 55%)" }
+                        }}
+                        className="h-[300px]"
+                      >
+                        <ResponsiveContainer width="100%" height="100%">
+                          <RechartsPieChart>
+                            <RechartsPieChart data={analyticsData.pieChartData}>
+                              {analyticsData.pieChartData.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={entry.fill} />
+                              ))}
+                            </RechartsPieChart>
+                            <ChartTooltip 
+                              content={({ active, payload }) => {
+                                if (active && payload && payload[0]) {
+                                  const data = payload[0].payload;
+                                  return (
+                                    <div className="bg-background border border-border rounded-lg p-3 shadow-lg">
+                                      <p className="font-medium">{data.name}</p>
+                                      <p className="text-sm text-muted-foreground">
+                                        {data.value} assinante{data.value !== 1 ? 's' : ''}
+                                      </p>
+                                      {data.price > 0 && (
+                                        <p className="text-sm text-muted-foreground">
+                                          R$ {data.price.toFixed(2)} cada
+                                        </p>
+                                      )}
+                                    </div>
+                                  );
+                                }
+                                return null;
+                              }}
+                            />
+                            <ChartLegend />
+                          </RechartsPieChart>
+                        </ResponsiveContainer>
+                      </ChartContainer>
+                    </CardContent>
+                  </Card>
+
+                  {/* Revenue by Plan Bar Chart */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <BarChart3 className="w-5 h-5" />
+                        Faturamento por Plano
+                      </CardTitle>
+                      <CardDescription>
+                        Receita gerada por cada tipo de plano
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <ChartContainer
+                        config={{
+                          value: { label: "Faturamento", color: "hsl(var(--primary))" }
+                        }}
+                        className="h-[300px]"
+                      >
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={analyticsData.barChartData}>
+                            <XAxis dataKey="name" />
+                            <YAxis 
+                              tickFormatter={(value) => 
+                                `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 0 })}`
+                              }
+                            />
+                            <ChartTooltip 
+                              content={({ active, payload, label }) => {
+                                if (active && payload && payload[0]) {
+                                  return (
+                                    <div className="bg-background border border-border rounded-lg p-3 shadow-lg">
+                                      <p className="font-medium">{label}</p>
+                                      <p className="text-sm text-muted-foreground">
+                                        R$ {payload[0].value?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                      </p>
+                                    </div>
+                                  );
+                                }
+                                return null;
+                              }}
+                            />
+                            <Bar dataKey="value" fill="var(--color-value)" />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </ChartContainer>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Financial Details Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">Plano Mensal</CardTitle>
+                      <CardDescription>R$ 55,00 por mês</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        <div className="flex justify-between">
+                          <span className="text-sm text-muted-foreground">Assinantes:</span>
+                          <span className="font-medium">{analyticsData.planCounts.mensal}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm text-muted-foreground">Faturamento:</span>
+                          <span className="font-medium text-blue-600">
+                            R$ {analyticsData.faturamentoMensal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">Plano Trimestral</CardTitle>
+                      <CardDescription>R$ 109,00 por trimestre</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        <div className="flex justify-between">
+                          <span className="text-sm text-muted-foreground">Assinantes:</span>
+                          <span className="font-medium">{analyticsData.planCounts.trimestral}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm text-muted-foreground">Faturamento:</span>
+                          <span className="font-medium text-orange-600">
+                            R$ {analyticsData.faturamentoTrimestral.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                  
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">Plano Semestral</CardTitle>
+                      <CardDescription>R$ 198,00 por semestre</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        <div className="flex justify-between">
+                          <span className="text-sm text-muted-foreground">Assinantes:</span>
+                          <span className="font-medium">{analyticsData.planCounts.semestral}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm text-muted-foreground">Faturamento:</span>
+                          <span className="font-medium text-green-600">
+                            R$ {analyticsData.faturamentoSemestral.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Operational Analysis */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Users className="w-5 h-5" />
+                        Status dos Membros
+                      </CardTitle>
+                      <CardDescription>
+                        Distribuição por status atual
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-2">
+                          <Badge variant="default">Ativo</Badge>
+                        </div>
+                        <span className="font-medium">{analyticsData.totalAtivos}</span>
+                      </div>
+                      
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-2">
+                          <Badge variant="secondary">Pendente</Badge>
+                        </div>
+                        <span className="font-medium">{analyticsData.totalPendentes}</span>
+                      </div>
+                      
+                      {analyticsData.totalExpirados > 0 && (
+                        <div className="flex justify-between items-center">
+                          <div className="flex items-center gap-2">
+                            <Badge variant="destructive">Expirado</Badge>
+                          </div>
+                          <span className="font-medium">{analyticsData.totalExpirados}</span>
+                        </div>
+                      )}
+                      
+                      {analyticsData.totalSuspensos > 0 && (
+                        <div className="flex justify-between items-center">
+                          <div className="flex items-center gap-2">
+                            <Badge variant="destructive">Suspenso</Badge>
+                          </div>
+                          <span className="font-medium">{analyticsData.totalSuspensos}</span>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <DollarSign className="w-5 h-5" />
+                        Projeções Financeiras
+                      </CardTitle>
+                      <CardDescription>
+                        Estimativas baseadas na base atual
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-muted-foreground">Receita Mensal (MRR):</span>
+                        <span className="font-medium">
+                          R$ {analyticsData.mrr.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                      
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-muted-foreground">Receita Anual (ARR):</span>
+                        <span className="font-medium">
+                          R$ {analyticsData.arr.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                      
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-muted-foreground">Receita Média por Usuário:</span>
+                        <span className="font-medium">
+                          R$ {analyticsData.arpu.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                      
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-muted-foreground">Taxa de Conversão:</span>
+                        <span className="font-medium">
+                          {((analyticsData.totalAtivos / (analyticsData.totalAtivos + analyticsData.totalPendentes)) * 100).toFixed(1)}%
+                        </span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {analyticsData.totalExpirados > 0 && (
+                  <Card className="bg-destructive/5 border-destructive/20">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2 text-destructive">
+                        <AlertTriangle className="w-5 h-5" />
+                        Atenção Necessária
+                      </CardTitle>
+                      <CardDescription>
+                        Membros que necessitam de atenção imediata
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-muted-foreground">Membros com assinatura expirada:</span>
+                          <Badge variant="destructive">{analyticsData.totalExpirados}</Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          Recomenda-se revisar e atualizar as datas de expiração ou suspender o acesso.
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            )}
           </TabsContent>
         </Tabs>
       </main>
