@@ -329,7 +329,7 @@ export default function PainelAdmin() {
                   <div>
                     <p className="text-sm text-muted-foreground">Membros Ativos</p>
                     <p className="text-2xl font-bold text-primary">
-                      {assinantes?.filter(member => member.status === 'ativo').length || 0}
+                      {assinantes?.filter(member => member.status === 'ativo' && !isExpired(member.data_expiracao)).length || 0}
                     </p>
                   </div>
                 </div>
