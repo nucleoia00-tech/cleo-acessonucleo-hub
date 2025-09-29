@@ -104,13 +104,20 @@ export default function PreviewContasSuporte() {
             </div>
 
             <div className="grid gap-4">
-              {contasMockadas.map((conta, index) => (
-                <Card key={conta.id} className="overflow-hidden">
-                  <CardHeader className="bg-muted/50">
+              {contasMockadas.map((conta, index) => {
+                const isPrincipal = index === 0;
+                return (
+                <Card key={conta.id} className={`overflow-hidden ${isPrincipal ? 'border-2 border-primary shadow-lg' : ''}`}>
+                  <CardHeader className={isPrincipal ? 'bg-primary/10' : 'bg-muted/50'}>
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-2">
                           <CardTitle className="text-xl">{conta.nomeConta}</CardTitle>
+                          {isPrincipal && (
+                            <Badge className="bg-primary text-primary-foreground">
+                              Conta Principal
+                            </Badge>
+                          )}
                           <Badge variant={conta.visivel ? "default" : "secondary"}>
                             {conta.visivel ? 'Visível' : 'Oculto'}
                           </Badge>
@@ -209,7 +216,7 @@ export default function PreviewContasSuporte() {
                     </div>
                   </CardContent>
                 </Card>
-              ))}
+               )})}
             </div>
           </div>
         )}
@@ -225,13 +232,31 @@ export default function PreviewContasSuporte() {
             </div>
 
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {contasMockadas.filter(c => c.visivel).map((conta) => (
-                <Card key={conta.id} className="overflow-hidden hover:shadow-lg transition-shadow">
-                  <CardHeader className="bg-gradient-to-br from-primary/10 to-primary/5">
-                    <CardTitle className="text-xl">{conta.nomeConta}</CardTitle>
-                    <CardDescription>{conta.descricao}</CardDescription>
+              {contasMockadas.filter(c => c.visivel).map((conta, index) => {
+                const isPrincipal = index === 0;
+                return (
+                <Card 
+                  key={conta.id} 
+                  className={`overflow-hidden hover:shadow-lg transition-all ${
+                    isPrincipal 
+                      ? 'border-2 border-primary shadow-md md:col-span-2 lg:col-span-1 lg:row-span-2' 
+                      : ''
+                  }`}
+                >
+                  <CardHeader className={isPrincipal ? 'bg-primary/20' : 'bg-gradient-to-br from-primary/10 to-primary/5'}>
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <CardTitle className={isPrincipal ? 'text-2xl' : 'text-xl'}>{conta.nomeConta}</CardTitle>
+                        <CardDescription className="mt-1">{conta.descricao}</CardDescription>
+                      </div>
+                      {isPrincipal && (
+                        <Badge className="bg-primary text-primary-foreground shrink-0">
+                          Principal
+                        </Badge>
+                      )}
+                    </div>
                   </CardHeader>
-                  <CardContent className="pt-6 space-y-4">
+                  <CardContent className={`pt-6 space-y-4 ${isPrincipal ? 'min-h-[400px]' : ''}`}>
                     {!contasGeradas[conta.id] ? (
                       <div className="py-8 text-center">
                         <Button
@@ -312,7 +337,7 @@ export default function PreviewContasSuporte() {
                     )}
                   </CardContent>
                 </Card>
-              ))}
+               )})}
             </div>
 
             <Card className="bg-muted/50">
