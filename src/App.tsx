@@ -13,6 +13,7 @@ import Aguardando from "./pages/Aguardando";
 import Bloqueado from "./pages/Bloqueado";
 import PainelAdmin from "./pages/PainelAdmin";
 import AcessoAdspower from "./pages/AcessoAdspower";
+import PreviewContasSuporte from "./pages/PreviewContasSuporte";
 
 const queryClient = new QueryClient();
 
@@ -29,6 +30,7 @@ const App = () => (
             <Route path="/login" element={<Login />} />
             <Route path="/aguardando" element={<Aguardando />} />
             <Route path="/bloqueado" element={<Bloqueado />} />
+            <Route path="/preview-contas-suporte" element={<PreviewContasSuporte />} />
             
             {/* Admin Routes */}
             <Route 
