@@ -13,8 +13,8 @@ import { useToast } from '@/hooks/use-toast';
 const contasMockadas = [
   {
     id: '1',
-    nomeConta: 'AdsPower Principal',
-    email_login: 'usuario@adspower.com',
+    nomeConta: 'Dicloack Principal',
+    email_login: 'usuario@dicloack.com',
     senha_atual: 'senha123456',
     visivel: true,
     ordem: 1,
@@ -23,12 +23,12 @@ const contasMockadas = [
   },
   {
     id: '2',
-    nomeConta: 'Adspower - CHAT GPT5',
-    email_login: 'chatgpt@adspower.com',
+    nomeConta: 'Dicloack - CHAT GPT5',
+    email_login: 'chatgpt@dicloack.com',
     senha_atual: 'gpt5senha789',
     visivel: true,
     ordem: 2,
-    descricao: 'Conta 02: Adspower - CHAT GPT5',
+    descricao: 'Conta 02: Dicloack - CHAT GPT5',
     ultima_atualizacao: '2025-01-25T14:20:00',
   },
   {
