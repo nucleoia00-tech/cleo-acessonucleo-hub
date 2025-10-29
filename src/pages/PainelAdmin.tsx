@@ -579,7 +579,7 @@ export default function PainelAdmin() {
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="credenciais" className="flex items-center gap-2">
               <Settings className="w-4 h-4" />
-              Acesso AdsPower
+              Acesso Dicloack
             </TabsTrigger>
             <TabsTrigger value="assinantes" className="flex items-center gap-2">
               <Users className="w-4 h-4" />
@@ -595,7 +595,7 @@ export default function PainelAdmin() {
           <TabsContent value="credenciais">
             <Card className="bg-card border-border">
               <CardHeader>
-                <CardTitle>Acesso AdsPower</CardTitle>
+                <CardTitle>Acesso Dicloack</CardTitle>
                 <CardDescription>
                   Use esta seção para alterar o e-mail e a senha da conta Membro. 
                   A alteração é refletida imediatamente para os assinantes ativos.

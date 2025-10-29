@@ -126,10 +126,10 @@ export default function AcessoAdspower() {
         <div className="max-w-2xl mx-auto">
           <div className="mb-8 text-center">
             <h1 className="text-3xl font-bold mb-2 bg-gradient-to-r from-primary via-accent to-secondary bg-clip-text text-transparent">
-              Acesso AdsPower
+              Acesso Dicloack
             </h1>
             <p className="text-muted-foreground">
-              Use os dados abaixo para entrar na conta Membro do AdsPower
+              Use os dados abaixo para entrar na conta Membro do Dicloack
             </p>
           </div>
 
