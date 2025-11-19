@@ -28,10 +28,25 @@ export default function Login() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !senha) return;
-
+    
+    // Validate inputs
+    try {
+      const { loginSchema } = await import('@/lib/validations');
+      loginSchema.parse({ 
+        email: email.trim().toLowerCase(), 
+        senha 
+      });
+    } catch (error: any) {
+      if (error.errors && error.errors[0]) {
+        toast({ title: "Erro de validação", description: error.errors[0].message, variant: "destructive" });
+      } else {
+        toast({ title: "Erro", description: "Erro na validação dos dados", variant: "destructive" });
+      }
+      return;
+    }
+    
     setIsSubmitting(true);
-    const { error } = await signIn(email, senha);
+    const { error } = await signIn(email.trim().toLowerCase(), senha);
     setIsSubmitting(false);
 
     if (error && typeof error.message === 'string' && error.message.toLowerCase().includes('email not confirmed')) {
