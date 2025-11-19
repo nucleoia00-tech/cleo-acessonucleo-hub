@@ -25,7 +25,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     const { usuario_email, acao }: LogRequest = await req.json();
 
-    console.log('Registrando log:', { usuario_email, acao });
+    console.log('Registrando log para ação:', acao);
 
     const { error } = await supabaseClient
       .from('logs')

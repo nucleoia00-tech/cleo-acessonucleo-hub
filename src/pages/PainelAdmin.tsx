@@ -114,10 +114,17 @@ export default function PainelAdmin() {
   // Mutation to update credenciais
   const updateCredenciaisMutation = useMutation({
     mutationFn: async ({ email_login, senha_atual }: { email_login: string; senha_atual: string }) => {
+      // Validate inputs
+      const { credenciaisSchema } = await import('@/lib/validations');
+      credenciaisSchema.parse({
+        email_login: email_login.trim(),
+        senha_atual: senha_atual
+      });
+
       const { error } = await supabase
         .from('credenciais_adspower')
         .update({
-          email_login,
+          email_login: email_login.trim(),
           senha_atual,
           ultima_atualizacao: new Date().toISOString()
         })
@@ -128,25 +135,38 @@ export default function PainelAdmin() {
     onSuccess: () => {
       toast({
         title: "Credenciais atualizadas",
-        description: "As credenciais do AdsPower foram atualizadas com sucesso.",
+        description: "As credenciais do Dicloack foram atualizadas com sucesso.",
       });
       refetchCredenciais();
     },
     onError: (error: any) => {
-      toast({
-        title: "Erro ao atualizar",
-        description: error.message,
-        variant: "destructive"
-      });
+      if (error.errors && error.errors[0]) {
+        toast({
+          title: "Erro de validação",
+          description: error.errors[0].message,
+          variant: "destructive"
+        });
+      } else {
+        toast({
+          title: "Erro ao atualizar",
+          description: error.message,
+          variant: "destructive"
+        });
+      }
     }
   });
 
   // Mutation to update member status
   const updateMemberMutation = useMutation({
     mutationFn: async ({ id, status, observacao, memberData }: { id: string; status: string; observacao?: string; memberData?: any }) => {
+      // Validate observacao if provided
+      if (observacao !== undefined && observacao.trim().length > 1000) {
+        throw new Error("Observação deve ter no máximo 1000 caracteres");
+      }
+
       const updates: any = { status };
       if (observacao !== undefined) {
-        updates.observacao_admin = observacao;
+        updates.observacao_admin = observacao.trim();
       }
       
       const { error } = await supabase
@@ -225,9 +245,14 @@ export default function PainelAdmin() {
   // Mutation to update plan
   const updatePlanMutation = useMutation({
     mutationFn: async ({ id, plano }: { id: string; plano: string }) => {
+      // Validate plan length
+      if (plano.trim().length > 100) {
+        throw new Error("Plano deve ter no máximo 100 caracteres");
+      }
+
       const { error } = await supabase
         .from('assinantes')
-        .update({ plano })
+        .update({ plano: plano.trim() })
         .eq('id', id);
       
       if (error) throw error;

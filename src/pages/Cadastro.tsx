@@ -25,15 +25,29 @@ export default function Cadastro() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!nome || !email || !senha || !confirmarSenha) return;
     
-    if (senha !== confirmarSenha) {
-      // O useAuth já vai mostrar o erro via toast
+    // Validate inputs
+    try {
+      const { signupSchema } = await import('@/lib/validations');
+      const { toast } = await import('@/hooks/use-toast');
+      signupSchema.parse({ 
+        nome: nome.trim(), 
+        email: email.trim().toLowerCase(), 
+        senha, 
+        confirmarSenha 
+      });
+    } catch (error: any) {
+      const { toast } = await import('@/hooks/use-toast');
+      if (error.errors && error.errors[0]) {
+        toast({ title: "Erro de validação", description: error.errors[0].message, variant: "destructive" });
+      } else {
+        toast({ title: "Erro", description: "Erro na validação dos dados", variant: "destructive" });
+      }
       return;
     }
 
     setIsSubmitting(true);
-    await signUp(email, senha, nome);
+    await signUp(email.trim().toLowerCase(), senha, nome.trim());
     setIsSubmitting(false);
   };
 
