@@ -4,9 +4,45 @@ import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/Logo';
 import { useAuth } from '@/hooks/useAuth';
 import { Clock, Mail } from 'lucide-react';
+import { useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function Aguardando() {
-  const { signOut } = useAuth();
+  const { signOut, user } = useAuth();
+
+  // Listener em tempo real para detectar quando o status mudar para "ativo"
+  useEffect(() => {
+    if (!user?.id) return;
+
+    console.log('Iniciando listener de atualização de status para usuário:', user.id);
+
+    const channel = supabase
+      .channel('status-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'assinantes',
+          filter: `user_id=eq.${user.id}`
+        },
+        (payload) => {
+          console.log('Atualização detectada:', payload);
+          const newStatus = payload.new?.status;
+          
+          if (newStatus === 'ativo') {
+            console.log('Status mudou para ativo! Recarregando página...');
+            window.location.reload();
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      console.log('Removendo listener de status');
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id]);
 
   const handleSignOut = async () => {
     console.log('Botão sair clicado - iniciando logout');
