@@ -11,7 +11,7 @@ interface LastlinkWebhookPayload {
   Data: {
     Buyer: {
       Email: string;
-      Name: string;
+      Name?: string; // Nome é opcional
     };
     Offer: {
       Name: string;
@@ -53,7 +53,7 @@ serve(async (req) => {
 
     const { Event, Data } = payload;
 
-    if (!Data?.Buyer?.Email || !Data?.Buyer?.Name || !Data?.Offer?.Name) {
+    if (!Data?.Buyer?.Email || !Data?.Offer?.Name) {
       console.error('Payload inválido:', payload);
       return new Response(
         JSON.stringify({ error: 'Dados obrigatórios faltando no payload' }), 
@@ -65,7 +65,7 @@ serve(async (req) => {
     }
 
     const customerEmail = Data.Buyer.Email;
-    const customerName = Data.Buyer.Name;
+    const customerName = Data.Buyer.Name || customerEmail.split('@')[0]; // Usar email como fallback
     const offerName = Data.Offer.Name.toUpperCase();
 
     // Mapear oferta para plano
