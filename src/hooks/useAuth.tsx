@@ -66,7 +66,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
@@ -79,6 +79,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           : error.message,
         variant: "destructive"
       });
+      return { error };
+    }
+    
+    // Verificar se o usuário tem status pendente e aprovar automaticamente
+    if (data?.user) {
+      const { data: assinante, error: assinanteError } = await supabase
+        .from('assinantes')
+        .select('status, email')
+        .eq('user_id', data.user.id)
+        .single();
+      
+      if (!assinanteError && assinante && assinante.status === 'pendente') {
+        // Aprovar automaticamente
+        const { error: updateError } = await supabase
+          .from('assinantes')
+          .update({ status: 'ativo' })
+          .eq('user_id', data.user.id);
+        
+        if (!updateError) {
+          toast({
+            title: "✅ Conta aprovada!",
+            description: "Sua conta foi aprovada automaticamente. Bem-vindo ao Núcleo IA!",
+          });
+        }
+      }
     }
     
     return { error };
@@ -119,6 +144,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = async () => {
     console.log('Iniciando processo de logout...');
     try {
+      // Limpar estados antes do logout
+      setUser(null);
+      setSession(null);
+      
       const { error } = await supabase.auth.signOut();
       if (error) {
         console.error('Erro no logout:', error);
@@ -129,13 +158,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
       } else {
         console.log('Logout realizado com sucesso');
-        toast({
-          title: "Logout realizado",
-          description: "Você foi desconectado com sucesso.",
-        });
+        // Forçar recarga da página para limpar todo o estado
+        window.location.href = '/login';
       }
     } catch (error) {
       console.error('Erro inesperado no logout:', error);
+      // Forçar recarga mesmo em caso de erro
+      window.location.href = '/login';
     }
   };
 
