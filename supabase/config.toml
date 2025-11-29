@@ -37,3 +37,6 @@ enable_signup = true
 
 [functions.registrar-log]
 verify_jwt = true
+
+[functions.webhook-lastlink]
+verify_jwt = false
