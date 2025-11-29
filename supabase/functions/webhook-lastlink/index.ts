@@ -7,28 +7,26 @@ const corsHeaders = {
 };
 
 interface LastlinkWebhookPayload {
-  event: 'purchase_completed' | 'renewal_payment_completed';
-  customer: {
-    name: string;
-    email: string;
-  };
-  subscription: {
-    plan: 'mensal' | 'trimestral' | 'semestral';
+  Event: string;
+  Data: {
+    Buyer: {
+      Email: string;
+      Name: string;
+    };
+    Offer: {
+      Name: string;
+    };
+    Purchase?: {
+      Recurrency?: number;
+    };
   };
 }
 
-// Mapeamento de dias por plano
-const PLAN_DAYS = {
-  'mensal': 30,
-  'trimestral': 90,
-  'semestral': 180,
-};
-
-// Mapeamento de valores por plano
-const PLAN_VALUES = {
-  'mensal': 'Mensal',
-  'trimestral': 'Trimestral',
-  'semestral': 'Semestral',
+// Mapeamento de ofertas Lastlink para planos
+const OFFER_TO_PLAN = {
+  'OFERTA MENSAL': { days: 30, name: 'Mensal' },
+  'OFERTA TRIMESTRAL': { days: 90, name: 'Trimestral' },
+  'OFERTA SEMESTRAL': { days: 180, name: 'Semestral' },
 };
 
 serve(async (req) => {
@@ -53,9 +51,9 @@ serve(async (req) => {
     
     console.log('Webhook recebido da Lastlink:', payload);
 
-    const { event, customer, subscription } = payload;
+    const { Event, Data } = payload;
 
-    if (!customer?.email || !customer?.name || !subscription?.plan) {
+    if (!Data?.Buyer?.Email || !Data?.Buyer?.Name || !Data?.Offer?.Name) {
       console.error('Payload inválido:', payload);
       return new Response(
         JSON.stringify({ error: 'Dados obrigatórios faltando no payload' }), 
@@ -66,15 +64,17 @@ serve(async (req) => {
       );
     }
 
-    // Normalizar plano para lowercase
-    const planKey = subscription.plan.toLowerCase() as keyof typeof PLAN_DAYS;
-    const planDays = PLAN_DAYS[planKey];
-    const planName = PLAN_VALUES[planKey];
+    const customerEmail = Data.Buyer.Email;
+    const customerName = Data.Buyer.Name;
+    const offerName = Data.Offer.Name.toUpperCase();
 
-    if (!planDays) {
-      console.error('Plano inválido:', subscription.plan);
+    // Mapear oferta para plano
+    const planInfo = OFFER_TO_PLAN[offerName as keyof typeof OFFER_TO_PLAN];
+
+    if (!planInfo) {
+      console.error('Oferta não reconhecida:', Data.Offer.Name);
       return new Response(
-        JSON.stringify({ error: 'Plano inválido' }), 
+        JSON.stringify({ error: `Oferta não reconhecida: ${Data.Offer.Name}` }), 
         { 
           status: 400, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -82,18 +82,22 @@ serve(async (req) => {
       );
     }
 
+    const { days: planDays, name: planName } = planInfo;
+    const isRenewal = Event === 'Purchase_Order_Approved' && Data.Purchase?.Recurrency && Data.Purchase.Recurrency > 1;
+
     // Calcular data de expiração
     const dataExpiracao = new Date();
     dataExpiracao.setDate(dataExpiracao.getDate() + planDays);
 
     // Verificar se usuário já existe
     const { data: existingUser } = await supabaseAdmin.auth.admin.listUsers();
-    const userExists = existingUser?.users.find(u => u.email === customer.email);
+    const userExists = existingUser?.users.find(u => u.email === customerEmail);
 
-    if (event === 'purchase_completed') {
+    if (!isRenewal) {
+      // Nova compra ou primeira compra
       if (userExists) {
         // Usuário existe, apenas atualizar status e data de expiração
-        console.log('Ativando usuário existente:', customer.email);
+        console.log('Ativando usuário existente:', customerEmail);
         
         const { error: updateError } = await supabaseAdmin
           .from('assinantes')
@@ -111,24 +115,24 @@ serve(async (req) => {
 
         // Registrar log
         await supabaseAdmin.rpc('registrar_log', {
-          _usuario_email: customer.email,
+          _usuario_email: customerEmail,
           _acao: `Assinatura ativada via Lastlink - Plano: ${planName}`
         });
 
-        console.log('Usuário ativado com sucesso:', customer.email);
+        console.log('Usuário ativado com sucesso:', customerEmail);
       } else {
         // Criar novo usuário
-        console.log('Criando novo usuário:', customer.email);
+        console.log('Criando novo usuário:', customerEmail);
         
         // Gerar senha temporária aleatória
         const tempPassword = crypto.randomUUID();
         
         const { data: newUser, error: createUserError } = await supabaseAdmin.auth.admin.createUser({
-          email: customer.email,
+          email: customerEmail,
           password: tempPassword,
           email_confirm: true,
           user_metadata: {
-            nome: customer.name
+            nome: customerName
           }
         });
 
@@ -154,16 +158,16 @@ serve(async (req) => {
 
         // Registrar log
         await supabaseAdmin.rpc('registrar_log', {
-          _usuario_email: customer.email,
+          _usuario_email: customerEmail,
           _acao: `Novo usuário criado e ativado via Lastlink - Plano: ${planName}`
         });
 
-        console.log('Novo usuário criado e ativado:', customer.email);
+        console.log('Novo usuário criado e ativado:', customerEmail);
       }
-    } else if (event === 'renewal_payment_completed') {
+    } else {
       // Renovação de assinatura existente
       if (!userExists) {
-        console.error('Usuário não encontrado para renovação:', customer.email);
+        console.error('Usuário não encontrado para renovação:', customerEmail);
         return new Response(
           JSON.stringify({ error: 'Usuário não encontrado para renovação' }), 
           { 
@@ -173,7 +177,7 @@ serve(async (req) => {
         );
       }
 
-      console.log('Renovando assinatura do usuário:', customer.email);
+      console.log('Renovando assinatura do usuário:', customerEmail);
 
       // Buscar data de expiração atual
       const { data: currentSubscriber } = await supabaseAdmin
@@ -211,17 +215,17 @@ serve(async (req) => {
 
       // Registrar log
       await supabaseAdmin.rpc('registrar_log', {
-        _usuario_email: customer.email,
+        _usuario_email: customerEmail,
         _acao: `Assinatura renovada via Lastlink - Plano: ${planName} - Nova expiração: ${novaDataExpiracao.toISOString()}`
       });
 
-      console.log('Assinatura renovada com sucesso:', customer.email);
+      console.log('Assinatura renovada com sucesso:', customerEmail);
     }
 
     return new Response(
       JSON.stringify({ 
         success: true, 
-        message: `Webhook processado com sucesso para ${customer.email}` 
+        message: `Webhook processado com sucesso para ${customerEmail}` 
       }), 
       { 
         status: 200, 
