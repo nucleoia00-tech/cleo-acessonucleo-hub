@@ -66,12 +66,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signIn = async (email: string, password: string) => {
+    console.log('🔐 Iniciando login para:', email);
+    
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
     
     if (error) {
+      console.error('❌ Erro no login:', error);
       toast({
         title: "Erro no login",
         description: error.message === 'Invalid login credentials' 
@@ -82,27 +85,57 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { error };
     }
     
+    console.log('✅ Login realizado, verificando status da conta...');
+    
     // Verificar se o usuário tem status pendente e aprovar automaticamente
     if (data?.user) {
-      const { data: assinante, error: assinanteError } = await supabase
-        .from('assinantes')
-        .select('status, email')
-        .eq('user_id', data.user.id)
-        .single();
-      
-      if (!assinanteError && assinante && assinante.status === 'pendente') {
-        // Aprovar automaticamente
-        const { error: updateError } = await supabase
+      try {
+        const { data: assinante, error: assinanteError } = await supabase
           .from('assinantes')
-          .update({ status: 'ativo' })
-          .eq('user_id', data.user.id);
+          .select('status, email, plano')
+          .eq('user_id', data.user.id)
+          .single();
         
-        if (!updateError) {
-          toast({
-            title: "✅ Conta aprovada!",
-            description: "Sua conta foi aprovada automaticamente. Bem-vindo ao Núcleo IA!",
-          });
+        console.log('📊 Status atual da conta:', assinante);
+        
+        if (!assinanteError && assinante) {
+          if (assinante.status === 'pendente') {
+            console.log('⚡ Aprovando conta automaticamente...');
+            
+            // Aprovar automaticamente com plano mensal padrão
+            const { error: updateError } = await supabase
+              .from('assinantes')
+              .update({ 
+                status: 'ativo',
+                plano: assinante.plano || 'Mensal',
+                data_expiracao: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+              })
+              .eq('user_id', data.user.id);
+            
+            if (updateError) {
+              console.error('❌ Erro ao aprovar conta:', updateError);
+            } else {
+              console.log('✅ Conta aprovada com sucesso!');
+              
+              // Registrar log de aprovação
+              await supabase.functions.invoke('registrar-log', {
+                body: { 
+                  usuario_email: email, 
+                  acao: 'Conta aprovada automaticamente no login' 
+                }
+              });
+              
+              toast({
+                title: "✅ Conta aprovada!",
+                description: "Sua conta foi aprovada automaticamente. Bem-vindo ao Núcleo IA!",
+              });
+            }
+          } else {
+            console.log('ℹ️ Conta já ativa ou com outro status:', assinante.status);
+          }
         }
+      } catch (err) {
+        console.error('❌ Erro ao verificar/aprovar conta:', err);
       }
     }
     
