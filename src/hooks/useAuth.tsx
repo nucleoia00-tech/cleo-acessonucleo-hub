@@ -133,8 +133,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
     } else {
       toast({
-        title: "Cadastro enviado",
-        description: "Aguarde aprovação do administrador.",
+        title: "Cadastro realizado com sucesso!",
+        description: "Faça login para acessar o Núcleo IA.",
       });
     }
     

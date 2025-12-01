@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, Navigate } from 'react-router-dom';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,6 +10,7 @@ import { Eye, EyeOff } from 'lucide-react';
 
 export default function Cadastro() {
   const { user, signUp, loading } = useAuth();
+  const navigate = useNavigate();
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
@@ -47,8 +48,13 @@ export default function Cadastro() {
     }
 
     setIsSubmitting(true);
-    await signUp(email.trim().toLowerCase(), senha, nome.trim());
+    const { error } = await signUp(email.trim().toLowerCase(), senha, nome.trim());
     setIsSubmitting(false);
+    
+    // Redirecionar para login após cadastro bem-sucedido
+    if (!error) {
+      navigate('/login');
+    }
   };
 
   if (loading) {
