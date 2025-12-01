@@ -27,6 +27,7 @@ const OFFER_TO_PLAN = {
   'OFERTA MENSAL': { days: 30, name: 'Mensal' },
   'OFERTA TRIMESTRAL': { days: 90, name: 'Trimestral' },
   'OFERTA SEMESTRAL': { days: 180, name: 'Semestral' },
+  'OFERTA PADRÃO': { days: 30, name: 'Mensal' }, // Oferta padrão = plano mensal
 };
 
 serve(async (req) => {
@@ -83,7 +84,8 @@ serve(async (req) => {
     }
 
     const { days: planDays, name: planName } = planInfo;
-    const isRenewal = Event === 'Purchase_Order_Approved' && Data.Purchase?.Recurrency && Data.Purchase.Recurrency > 1;
+    // Detectar renovação: evento Recurrent_Payment OU Recurrency > 0
+    const isRenewal = Event === 'Recurrent_Payment' || (Data.Purchase?.Recurrency && Data.Purchase.Recurrency > 0);
 
     // Calcular data de expiração
     const dataExpiracao = new Date();
