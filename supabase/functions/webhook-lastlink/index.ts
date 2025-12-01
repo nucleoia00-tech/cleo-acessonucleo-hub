@@ -84,8 +84,8 @@ serve(async (req) => {
     }
 
     const { days: planDays, name: planName } = planInfo;
-    // Detectar renovação: evento Recurrent_Payment OU Recurrency > 0
-    const isRenewal = Event === 'Recurrent_Payment' || (Data.Purchase?.Recurrency && Data.Purchase.Recurrency > 0);
+    // Detectar renovação: evento Recurrent_Payment OU Recurrency > 1 (segunda cobrança em diante)
+    const isRenewal = Event === 'Recurrent_Payment' || (Data.Purchase?.Recurrency && Data.Purchase.Recurrency > 1);
 
     // Calcular data de expiração
     const dataExpiracao = new Date();
