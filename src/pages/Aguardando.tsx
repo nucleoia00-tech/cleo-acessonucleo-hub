@@ -66,13 +66,22 @@ export default function Aguardando() {
 
             <Button 
               variant="gradient" 
-              onClick={() => navigate('/login')} 
+              onClick={() => {
+                console.log('Navegando para login...');
+                navigate('/login', { replace: true });
+              }} 
               className="w-full"
+              type="button"
             >
               Ir para Login
             </Button>
             
-            <Button variant="outline" onClick={handleSignOut} className="w-full">
+            <Button 
+              variant="outline" 
+              onClick={handleSignOut} 
+              className="w-full"
+              type="button"
+            >
               Sair
             </Button>
           </CardContent>
